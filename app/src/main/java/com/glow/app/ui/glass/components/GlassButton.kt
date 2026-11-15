@@ -1,5 +1,6 @@
 package com.glow.app.ui.glass.components
 
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.PaddingValues
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -42,16 +44,19 @@ fun GlassButton(
     modifier: Modifier = Modifier,
     backdrop: GlassBackdrop? = null,
     enabled: Boolean = true,
+    selected: Boolean = false,
     style: GlassStyle = GlassStyle.Thin,
     contentPadding: PaddingValues = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
     content: @Composable RowScope.() -> Unit,
 ) {
     val interaction = rememberGlassInteraction()
+    val focused by interaction.interactionSource.collectIsFocusedAsState()
 
     GlassSurface(
         modifier = modifier
             .heightIn(min = MinTouchTarget)
             .alpha(if (enabled) 1f else 0.4f)
+            .glassStateRing(selected, focused && enabled, PillShape)
             .glassClickable(
                 state = interaction,
                 enabled = enabled,
@@ -60,7 +65,7 @@ fun GlassButton(
             ),
         backdrop = backdrop,
         shape = PillShape,
-        style = style,
+        style = if (selected) GlassStyle.Interactive else style,
         depth = GlassDepth.Raised,
         interaction = if (enabled) interaction else null,
         contentAlignment = Alignment.Center,
@@ -87,11 +92,13 @@ fun GlassIconButton(
     modifier: Modifier = Modifier,
     backdrop: GlassBackdrop? = null,
     enabled: Boolean = true,
+    selected: Boolean = false,
     size: Dp = MinTouchTarget,
     style: GlassStyle = GlassStyle.Thin,
     content: @Composable BoxScope.() -> Unit,
 ) {
     val interaction = rememberGlassInteraction()
+    val focused by interaction.interactionSource.collectIsFocusedAsState()
     val description = contentDescription
 
     GlassSurface(
@@ -99,6 +106,7 @@ fun GlassIconButton(
             .size(size)
             .alpha(if (enabled) 1f else 0.4f)
             .semantics { this.contentDescription = description }
+            .glassStateRing(selected, focused && enabled, CircleShape)
             .glassClickable(
                 state = interaction,
                 enabled = enabled,
@@ -107,7 +115,7 @@ fun GlassIconButton(
             ),
         backdrop = backdrop,
         shape = CircleShape,
-        style = style,
+        style = if (selected) GlassStyle.Interactive else style,
         depth = GlassDepth.Raised,
         interaction = if (enabled) interaction else null,
         contentAlignment = Alignment.Center,

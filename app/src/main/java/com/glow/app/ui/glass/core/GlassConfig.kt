@@ -98,6 +98,50 @@ data class GlassStyle(
             specularAlpha = 0.10f,
             refractionStrength = 1.00f,
         )
+
+        /** رقيق جداً: تراكبات خفيفة وعناصر ثانوية. تمويه قليل، حد ولمعان هادئان. */
+        val UltraThin = GlassStyle(
+            blurRadius = 8.dp,
+            tintAlpha = 0.04f,
+            fallbackTintAlpha = 0.12f,
+            borderAlpha = 0.10f,
+            highlightAlpha = 0.22f,
+            specularAlpha = 0.08f,
+            refractionStrength = 0.50f,
+        )
+
+        /** كثيف: أسطح قراءة (قوائم، حقول) حيث الوضوح قبل الانكسار. */
+        val Dense = GlassStyle(
+            blurRadius = 44.dp,
+            tintAlpha = 0.22f,
+            fallbackTintAlpha = 0.40f,
+            borderAlpha = 0.20f,
+            highlightAlpha = 0.30f,
+            specularAlpha = 0.12f,
+            refractionStrength = 0.45f,
+        )
+
+        /** مرتفع: لوحات وحوارات فوق المحتوى. حد وإضاءة أقوى. */
+        val Elevated = GlassStyle(
+            blurRadius = 32.dp,
+            tintAlpha = 0.14f,
+            fallbackTintAlpha = 0.30f,
+            borderAlpha = 0.26f,
+            highlightAlpha = 0.48f,
+            specularAlpha = 0.22f,
+            refractionStrength = 0.70f,
+        )
+
+        /** تفاعلي: أزرار وعناصر تُلمس. انكسار ولمعان أوضح لتبدو جسماً فيزيائياً. */
+        val Interactive = GlassStyle(
+            blurRadius = 16.dp,
+            tintAlpha = 0.08f,
+            fallbackTintAlpha = 0.20f,
+            borderAlpha = 0.22f,
+            highlightAlpha = 0.44f,
+            specularAlpha = 0.22f,
+            refractionStrength = 0.90f,
+        )
     }
 }
 
