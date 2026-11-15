@@ -110,7 +110,6 @@ fun SettingsScreen(
         }
 
         Section("الألوان") {
-            ColorwayGrid(store)
             BackgroundPicker(store)
         }
 
@@ -411,47 +410,6 @@ private fun DrawScope.paintPhone(dark: Boolean) {
     )
 }
 
-/** شبكة بطاقات اللوحات السائلة (عمودان) مع بطاقة «مخصّص» في آخرها. */
-@Composable
-private fun ColorwayGrid(store: SettingsStore) {
-    val skin = LocalGlowSkin.current
-    val all = Colorways.Presets + Colorways.custom(store.customAccent, store.customBg)
-    Column(Modifier.fillMaxWidth().padding(vertical = 10.dp)) {
-        all.chunked(2).forEach { row ->
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 6.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                row.forEach { cw ->
-                    FluidPaletteCard(
-                        colors = cw.blobs,
-                        base = cw.bg,
-                        label = cw.name,
-                        selected = store.paletteId == cw.id,
-                        borderColor = skin.accent,
-                        badgeBg = skin.accent,
-                        badgeFg = skin.onAccent,
-                        onClick = { store.updatePalette(cw.id) },
-                        modifier = Modifier.weight(1f),
-                    )
-                }
-                if (row.size == 1) Spacer(Modifier.weight(1f))
-            }
-        }
-        if (store.paletteId == Colorways.CUSTOM_ID) {
-            Text(
-                "لون التمييز",
-                color = skin.textSecondary,
-                fontSize = 14.sp,
-                modifier = Modifier.padding(start = 18.dp, end = 18.dp, top = 12.dp),
-            )
-            HsvPicker(store.customAccent) { store.updateCustomAccent(it) }
-        }
-    }
-}
-
 /** اختيار الخلفية: من اللوحة أو أسود أو أبيض أو لون مخصّص. */
 @Composable
 private fun BackgroundPicker(store: SettingsStore) {
@@ -516,15 +474,14 @@ private fun BackgroundPicker(store: SettingsStore) {
     }
 }
 
-/** معاينة لون وثلاثة منزلقات زجاجية: الصبغة والتشبّع والسطوع. */
+/** معاينة لون ومنزلق التشبّع فقط. */
 @Composable
 private fun HsvPicker(color: Color, onChange: (Color) -> Unit) {
     val skin = LocalGlowSkin.current
     val initial = remember { colorToHsv(color) }
-    var h by remember { mutableFloatStateOf(initial[0]) }
+    val h = initial[0]
     var s by remember { mutableFloatStateOf(initial[1]) }
-    var v by remember { mutableFloatStateOf(initial[2]) }
-    val rainbow = remember { (0..6).map { hsvColor(it * 60f, 1f, 1f) } }
+    val v = initial[2]
     Column(
         Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -538,27 +495,11 @@ private fun HsvPicker(color: Color, onChange: (Color) -> Unit) {
                 .border(1.5.dp, Color.White.copy(alpha = 0.35f), RoundedCornerShape(22.dp)),
         )
         GlowGlassSlider(
-            label = "الصبغة",
-            valueText = "${h.toInt()}°",
-            value = h / 360f,
-            onValueChange = { h = it * 360f; onChange(hsvColor(h, s, v)) },
-            fillColors = rainbow,
-            rimColor = skin.accent,
-        )
-        GlowGlassSlider(
             label = "التشبّع",
             valueText = "${(s * 100).toInt()}%",
             value = s,
             onValueChange = { s = it; onChange(hsvColor(h, s, v)) },
             fillColors = listOf(hsvColor(h, 0f, v), hsvColor(h, 1f, v)),
-            rimColor = skin.accent,
-        )
-        GlowGlassSlider(
-            label = "السطوع",
-            valueText = "${(v * 100).toInt()}%",
-            value = v,
-            onValueChange = { v = it; onChange(hsvColor(h, s, v)) },
-            fillColors = listOf(Color.Black, hsvColor(h, s, 1f)),
             rimColor = skin.accent,
         )
     }
