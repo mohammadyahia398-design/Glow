@@ -41,18 +41,20 @@ import androidx.compose.ui.unit.sp
 import com.glow.app.ui.common.GlowIcon
 import com.glow.app.ui.common.IconKind
 import kotlin.math.cos
+import kotlin.math.exp
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sin
 import kotlin.math.sqrt
 
 /**
- * محاكاة أربع بقع سائلة داخل بطاقة. لكل بقعة كتلة مختلفة، فتتبع الإصبع بتفاوت وتنفصل وتلتقي.
+ * محاكاة أربع بقع سائلة داخل بطاقة، لكل منها كتلة مختلفة.
  *
- * - اللمس: دفعة رذاذ فورية بعيداً عن نقطة اللمس، وتموّج دائري يتّسع.
- * - الإمساك: البقع تنجذب إلى الإصبع كمغناطيس، وتُدفع عنه إن اقتربت جداً، وتدور حوله مع سرعة حركته.
- * - الإفلات: ارتداد هلامي نحو الإصبع ثم تعود إلى مواضعها.
- * - بلا لمس: انجراف بطيء، ولمعة تتجوّل وحدها.
+ * - اللمس: أقرب بقعة «تلتصق» بإصبعك وتتبعه مباشرة، والبقع الأخرى تُدفع جانباً وتنجذب نحوه وتدور حوله.
+ * - السحب: يترك الإصبع أثراً يسحب الألوان معه كالتحريك في طلاء سائل، ثم يزول الأثر تدريجياً.
+ * - اللمس الأول: دفعة رذاذ وتموّج دائري يتّسع.
+ * - الإفلات: البقعة الملتصقة تنطلق بسرعة إصبعك ثم ترتدّ هلامياً إلى مكانها.
+ * - بلا لمس: انجراف واضح بطيء، والبقع تتدافع برفق، ولمعة تتجوّل وحدها.
  */
 private class FluidSim {
     val x = FloatArray(4)
@@ -77,9 +79,17 @@ private class FluidSim {
         private set
     var ripple = 1f
         private set
+
+    /** أثر الإصبع: x, y, ثم إزاحة (dx, dy) تتلاشى مع الزمن. */
+    val trail = FloatArray(TRAIL_N * 4)
+    private var trailHead = 0
+    private var lastTrailX = 0f
+    private var lastTrailY = 0f
+
     private var tx = 0f
     private var ty = 0f
     private var touching = false
+    private var grab = -1
     private var fvx = 0f
     private var fvy = 0f
 
@@ -109,20 +119,30 @@ private class FluidSim {
         ty = py
         pressX = px
         pressY = py
+        lastTrailX = px
+        lastTrailY = py
         ripple = 0f
         fvx = 0f
         fvy = 0f
         if (w <= 0f) return
         val m = min(w, h)
         val reach = m * 0.95f
+        var best = 0
+        var bestD = Float.MAX_VALUE
         for (i in 0..3) {
             val dx = x[i] - px
             val dy = y[i] - py
-            val dist = sqrt(dx * dx + dy * dy) + 0.001f
+            val d2 = dx * dx + dy * dy
+            if (d2 < bestD) {
+                bestD = d2
+                best = i
+            }
+            val dist = sqrt(d2) + 0.001f
             val f = max(0f, 1f - dist / reach)
-            vx[i] += dx / dist * f * m * 2.4f
-            vy[i] += dy / dist * f * m * 2.4f
+            vx[i] += dx / dist * f * m * 2.0f
+            vy[i] += dy / dist * f * m * 2.0f
         }
+        grab = best
     }
 
     fun move(px: Float, py: Float, dx: Float, dy: Float) {
@@ -130,21 +150,37 @@ private class FluidSim {
         ty = py
         fvx = dx * 60f
         fvy = dy * 60f
+        if (w <= 0f) return
+        val m = min(w, h)
+        val ex = px - lastTrailX
+        val ey = py - lastTrailY
+        if (ex * ex + ey * ey > (m * 0.035f) * (m * 0.035f)) {
+            var gx = ex * 2.6f
+            var gy = ey * 2.6f
+            val mag = sqrt(gx * gx + gy * gy)
+            val cap = m * 0.40f
+            if (mag > cap) {
+                gx *= cap / mag
+                gy *= cap / mag
+            }
+            val o = trailHead * 4
+            trail[o] = px
+            trail[o + 1] = py
+            trail[o + 2] = gx
+            trail[o + 3] = gy
+            trailHead = (trailHead + 1) % TRAIL_N
+            lastTrailX = px
+            lastTrailY = py
+        }
     }
 
     fun release() {
         touching = false
-        if (w <= 0f) return
-        val m = min(w, h)
-        val reach = m * 1.1f
-        for (i in 0..3) {
-            val dx = tx - x[i]
-            val dy = ty - y[i]
-            val dist = sqrt(dx * dx + dy * dy) + 0.001f
-            val f = max(0f, 1f - dist / reach)
-            vx[i] += dx / dist * f * m * 1.6f
-            vy[i] += dy / dist * f * m * 1.6f
+        if (grab in 0..3) {
+            vx[grab] += fvx * 0.6f
+            vy[grab] += fvy * 0.6f
         }
+        grab = -1
     }
 
     fun step(dt: Float, seconds: Float) {
@@ -158,6 +194,12 @@ private class FluidSim {
         fvx *= 1f - min(1f, dt * 8f)
         fvy *= 1f - min(1f, dt * 8f)
 
+        val fade = exp(-dt * 1.7f)
+        for (i in 0 until TRAIL_N) {
+            trail[i * 4 + 2] *= fade
+            trail[i * 4 + 3] *= fade
+        }
+
         val gx = if (touching) tx else w * (0.40f + 0.14f * sin(seconds * 0.55f))
         val gy = if (touching) ty else h * (0.30f + 0.10f * cos(seconds * 0.43f))
         val hk = min(1f, dt * (if (touching) 14f else 3f))
@@ -166,42 +208,65 @@ private class FluidSim {
 
         val speed = sqrt(fvx * fvx + fvy * fvy)
         for (i in 0..3) {
-            val homeXi = homeX[i] * w + sin(seconds * 0.7f + i * 1.9f) * 0.09f * w
-            val homeYi = homeY[i] * h + cos(seconds * 0.6f + i * 2.4f) * 0.09f * h
+            val homeXi = homeX[i] * w + sin(seconds * 0.9f + i * 1.9f) * 0.17f * w
+            val homeYi = homeY[i] * h + cos(seconds * 0.8f + i * 2.4f) * 0.17f * h
             val k = 34f / mass[i]
             var ax = (homeXi - x[i]) * k
             var ay = (homeYi - y[i]) * k
-            if (touching) {
-                val dx = x[i] - tx
-                val dy = y[i] - ty
+
+            // تدافع ناعم بين البقع: تتجاور كقطرات لا تتراكب
+            for (j in 0..3) {
+                if (j == i) continue
+                val dx = x[i] - x[j]
+                val dy = y[i] - y[j]
                 val dist = sqrt(dx * dx + dy * dy) + 0.001f
-                val fp = max(0f, 1f - dist / reachPull)
-                // مغناطيس: انجذاب نحو الإصبع
-                ax -= dx / dist * fp * fp * 11f * m / mass[i]
-                ay -= dy / dist * fp * fp * 11f * m / mass[i]
-                // تنافر قريب كي لا تنطبق البقعة على الإصبع
-                if (dist < reachPush) {
-                    val f = 1f - dist / reachPush
-                    ax += dx / dist * f * f * 16f * m
-                    ay += dy / dist * f * f * 16f * m
+                val minD = m * 0.55f
+                if (dist < minD) {
+                    val f = 1f - dist / minD
+                    ax += dx / dist * f * f * 7f * m
+                    ay += dy / dist * f * f * 7f * m
                 }
-                // دوران حول الإصبع يزداد مع سرعته، وسحب مع اتجاهه
-                val sw = fp * min(speed, 2500f) * 0.9f
-                ax += -dy / dist * sw + fvx * fp * 4f
-                ay += dx / dist * sw + fvy * fp * 4f
             }
-            val damp = 1f - min(0.9f, 3.6f * dt)
+
+            var damp = 1f - min(0.9f, 3.4f * dt)
+            if (touching) {
+                if (i == grab) {
+                    // البقعة الملتصقة تتبع الإصبع بنابض قوي
+                    ax = (tx - x[i]) * 190f + (ax - (homeXi - x[i]) * k) * 0.5f
+                    ay = (ty - y[i]) * 190f + (ay - (homeYi - y[i]) * k) * 0.5f
+                    damp = 1f - min(0.9f, 11f * dt)
+                } else {
+                    val dx = x[i] - tx
+                    val dy = y[i] - ty
+                    val dist = sqrt(dx * dx + dy * dy) + 0.001f
+                    val fp = max(0f, 1f - dist / reachPull)
+                    ax -= dx / dist * fp * fp * 8f * m / mass[i]
+                    ay -= dy / dist * fp * fp * 8f * m / mass[i]
+                    if (dist < reachPush) {
+                        val f = 1f - dist / reachPush
+                        ax += dx / dist * f * f * 16f * m
+                        ay += dy / dist * f * f * 16f * m
+                    }
+                    val sw = fp * min(speed, 2500f) * 0.9f
+                    ax += -dy / dist * sw + fvx * fp * 4f
+                    ay += dx / dist * sw + fvy * fp * 4f
+                }
+            }
             vx[i] = (vx[i] + ax * dt) * damp
             vy[i] = (vy[i] + ay * dt) * damp
             x[i] = (x[i] + vx[i] * dt).coerceIn(-0.25f * w, 1.25f * w)
             y[i] = (y[i] + vy[i] * dt).coerceIn(-0.25f * h, 1.25f * h)
         }
     }
+
+    companion object {
+        const val TRAIL_N = 10
+    }
 }
 
 /**
- * شيدر AGSL: كل بقعة لها «مجال» غاوسي، واللون عند كل بكسل مزج ناعم متصل بين الألوان
- * بأوزان أُسّية، فتنساب الألوان في بعضها كتدرّج زجاجي سائل بلا حدود حادّة.
+ * شيدر AGSL: كل بقعة لها «مجال» غاوسي، واللون عند كل بكسل مزج ناعم متصل بين الألوان.
+ * أثر الإصبع (10 نقاط بإزاحات متلاشية) يسحب إحداثيات العيّنة، فتنجرّ الألوان مع الإصبع كالطلاء.
  * حافة البطاقة تميل إلى بياض حليبي، وتحت الإصبع لمعة تتبعه، وعند اللمس تموّج دائري يتّسع،
  * وحبيبات دقيقة كالصور المرجعية.
  */
@@ -209,6 +274,7 @@ private class FluidSim {
 private class FluidShader {
     private val shader = RuntimeShader(SOURCE)
     val brush = ShaderBrush(shader)
+    private val trailNames = Array(FluidSim.TRAIL_N) { "uT" + it }
 
     fun update(sim: FluidSim, colors: List<Color>, base: Color) {
         val m = min(sim.w, sim.h)
@@ -218,7 +284,7 @@ private class FluidShader {
         shader.setFloatUniform("uP1", sim.x[1], sim.y[1])
         shader.setFloatUniform("uP2", sim.x[2], sim.y[2])
         shader.setFloatUniform("uP3", sim.x[3], sim.y[3])
-        shader.setFloatUniform("uRad", m * 0.70f, m * 0.66f, m * 0.64f, m * 0.68f)
+        shader.setFloatUniform("uRad", m * 0.60f, m * 0.57f, m * 0.55f, m * 0.58f)
         shader.setFloatUniform("uC0", colors[0].red, colors[0].green, colors[0].blue)
         shader.setFloatUniform("uC1", colors[1].red, colors[1].green, colors[1].blue)
         shader.setFloatUniform("uC2", colors[2].red, colors[2].green, colors[2].blue)
@@ -228,6 +294,13 @@ private class FluidShader {
         shader.setFloatUniform("uTouchAmt", sim.touchAmt)
         shader.setFloatUniform("uPress", sim.pressX, sim.pressY)
         shader.setFloatUniform("uRipple", sim.ripple)
+        for (i in 0 until FluidSim.TRAIL_N) {
+            val o = i * 4
+            shader.setFloatUniform(
+                trailNames[i],
+                sim.trail[o], sim.trail[o + 1], sim.trail[o + 2], sim.trail[o + 3],
+            )
+        }
     }
 
     companion object {
@@ -248,11 +321,31 @@ uniform float2 uHi;
 uniform float uTouchAmt;
 uniform float2 uPress;
 uniform float uRipple;
+uniform float4 uT0;
+uniform float4 uT1;
+uniform float4 uT2;
+uniform float4 uT3;
+uniform float4 uT4;
+uniform float4 uT5;
+uniform float4 uT6;
+uniform float4 uT7;
+uniform float4 uT8;
+uniform float4 uT9;
+
+float2 drag(float2 fc, float4 t, float r2) {
+    float2 d = fc - t.xy;
+    return t.zw * exp(-dot(d, d) / r2);
+}
 
 half4 main(float2 fc) {
     float m = min(uSize.x, uSize.y);
-    float2 warp = float2(sin(fc.y * 0.016 + uTime * 1.1), cos(fc.x * 0.014 - uTime * 0.9)) * (m * 0.035);
-    float2 q = fc + warp;
+    float r2 = m * m * 0.09;
+    float2 pull = drag(fc, uT0, r2) + drag(fc, uT1, r2) + drag(fc, uT2, r2) + drag(fc, uT3, r2)
+        + drag(fc, uT4, r2) + drag(fc, uT5, r2) + drag(fc, uT6, r2) + drag(fc, uT7, r2)
+        + drag(fc, uT8, r2) + drag(fc, uT9, r2);
+
+    float2 warp = float2(sin(fc.y * 0.016 + uTime * 1.3), cos(fc.x * 0.014 - uTime * 1.1)) * (m * 0.05);
+    float2 q = fc + warp - pull;
 
     float2 d0 = q - uP0;
     float2 d1 = q - uP1;
@@ -263,7 +356,7 @@ half4 main(float2 fc) {
     float s2 = exp(-dot(d2, d2) / (uRad.z * uRad.z));
     float s3 = exp(-dot(d3, d3) / (uRad.w * uRad.w));
 
-    float k = 4.6;
+    float k = 5.2;
     float w0 = exp(k * s0);
     float w1 = exp(k * s1);
     float w2 = exp(k * s2);
