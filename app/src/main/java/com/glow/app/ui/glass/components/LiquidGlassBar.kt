@@ -27,7 +27,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -59,6 +58,7 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.graphicsLayer
@@ -93,6 +93,7 @@ import com.glow.app.ui.glass.surfaces.GlassBackdrop
 import com.glow.app.ui.glass.surfaces.GlassSurface
 import com.glow.app.ui.glass.surfaces.glassBackdropSource
 import com.glow.app.ui.glass.surfaces.rememberGlassBackdrop
+import com.glow.app.ui.theme.LocalGlowSkin
 import kotlinx.coroutines.launch
 import kotlin.math.max
 import kotlin.math.min
@@ -106,7 +107,7 @@ import kotlin.math.roundToInt
  * @property lensGrow مقدار ازدياد ارتفاع العدسة عند اللمس (فتخرج من الكبسولة).
  * @property lensWiden نسبة ازدياد عرضها عند اللمس الكامل (نسبة إلى عرض العنصر الواحد).
  * @property restWiden نسبة ازدياد عرضها وهي ساكنة؛ تبقى كبسولة أعرض من ارتفاعها ولا تعود دائرة.
- * @property barFill تلوين الكبسولة (خفيف: الزجاج يُظهر ما تحته).
+ * @property barFill تلوين الكبسولة (خفيف: الزجاج يُظهر ما تحته). Unspecified = يتبع السمة: أبيض شفاف جداً.
  * @property pressDamping ارتداد انتفاخ العدسة وتسطّحها (أقل = أكثر ارتداداً).
  * @property magnify تكبير مركز العدسة عند اللمس الكامل (1 يعطّله).
  * @property bleed عرض المحتوى الحقيقي الذي تلتقطه العدسة خارج حدّها لتنكسر به حافتها.
@@ -119,7 +120,7 @@ import kotlin.math.roundToInt
 data class LiquidBarSpec(
     val height: Dp = 64.dp,
     val innerPadding: Dp = 3.dp,
-    val lensGrow: Dp = 8.dp,
+    val lensGrow: Dp = 12.dp,
     val lensWiden: Float = 0.80f,
     val restWiden: Float = 0.10f,
     val iconSize: Dp = 26.dp,
@@ -127,11 +128,11 @@ data class LiquidBarSpec(
     val barStyle: GlassStyle = GlassStyle.Regular.copy(
         tintAlpha = 0.06f,
         fallbackTintAlpha = 0.30f,
-        borderAlpha = 0.10f,
-        highlightAlpha = 0.12f,
-        specularAlpha = 0.04f,
+        borderAlpha = 0.32f,
+        highlightAlpha = 0.40f,
+        specularAlpha = 0.10f,
     ),
-    val barFill: Color = Color(0xFFFFFFFF).copy(alpha = 0.90f),
+    val barFill: Color = Color.Unspecified,
     val springDamping: Float = 0.72f,
     val springStiffness: Float = 380f,
     val pressDamping: Float = 0.60f,
@@ -177,16 +178,24 @@ fun LiquidGlassBar(
     modifier: Modifier = Modifier,
     backdrop: GlassBackdrop? = null,
     spec: LiquidBarSpec = LiquidBarSpec(),
-    accent: Color = Color(0xFF06B6D4),
-    unselected: Color = Color(0xFF3B4A53),
+    accent: Color = Color.Unspecified,
+    unselected: Color = Color.Unspecified,
 ) {
     if (items.isEmpty()) return
     val systemRtl = LocalLayoutDirection.current == LayoutDirection.Rtl
+    val skin = LocalGlowSkin.current
+    // ألوان الأيقونات تتبع السمة: ظاهرة وواضحة على الزجاج في الوضعين.
+    val accentColor = if (accent.isSpecified) accent else skin.accentText
+    val idleColor = if (unselected.isSpecified) unselected
+    else skin.text.copy(alpha = if (skin.isDark) 0.92f else 0.82f)
+    val barSpec = if (spec.barFill.isSpecified) spec else spec.copy(
+        barFill = Color.White.copy(alpha = if (skin.isDark) 0.08f else 0.30f),
+    )
     val ordered = remember(items, systemRtl) { if (systemRtl) items.asReversed() else items }
 
     // الحساب الداخلي كله بترتيب LTR ثابت لتبسيط الإحداثيات؛ الترتيب يُعكس يدوياً أعلاه.
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-        LiquidBarBody(ordered, selectedId, onSelect, modifier, backdrop, spec, accent, unselected)
+        LiquidBarBody(ordered, selectedId, onSelect, modifier, backdrop, barSpec, accentColor, idleColor)
     }
 }
 
@@ -347,15 +356,10 @@ private fun LiquidBarBody(
                 backdrop = backdrop,
                 shape = shape,
                 style = spec.barStyle,
-                depth = GlassDepth.Floating,
+                depth = GlassDepth.Flush, // بلا ظل خارجي
             ) {}
             // تلوين خفيف؛ داخل المصدر فتراه العدسة معه.
             Box(Modifier.matchParentSize().background(spec.barFill, shape))
-            // حافة داكنة ناعمة رفيعة بدل الإطار الأبيض.
-            Box(
-                Modifier.matchParentSize()
-                    .border(0.75.dp, Color(0xFF0B2530).copy(alpha = 0.10f), shape),
-            )
             // لمعة علوية ناعمة تعطي الكبسولة عمقاً زجاجياً.
             Box(
                 Modifier.matchParentSize().background(
@@ -413,6 +417,8 @@ private fun LiquidBarBody(
                                 corner = hh,
                             )
                             this.clip = true
+                            // ساكنة: لا نسخة ثانية فوق الشريط (تكرّر الأيقونات)؛ تتميّز بجسمها وحافتها المرسومين.
+                            this.alpha = (g / 0.12f).coerceIn(0f, 1f)
                             this.renderEffect =
                                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && effectHolder != null && g > 0.02f) {
                                     effectHolder.effect(
@@ -540,7 +546,7 @@ private class LensClipShape(
 }
 
 /**
- * يرسم حافة العدسة: بلا جسم ولا ضباب (الزجاج شفاف تماماً)، وعند اللمس تقوى الإضاءة الحادّة
+ * يرسم حافة العدسة: واضحة وهي ساكنة (جسم أفتح وظل داخلي وحافة) فتتميّز عن الشريط، وتقوى مع اللمس. بلا ضباب (الزجاج شفاف تماماً)، وعند اللمس تقوى الإضاءة الحادّة
  * على الحافة. لا ألوان مرسومة: أي لون على الحافة يأتي من انكسار ما تحتها.
  */
 private fun DrawScope.drawLensRim(
@@ -554,23 +560,22 @@ private fun DrawScope.drawLensRim(
     val p = press.coerceIn(0f, 1f)
     val tl = Offset(left, top)
 
-    // جسم خفيف وظل داخلي ناعم يظهران والعدسة ساكنة فقط، ويزولان عند اللمس.
+    // جسم زجاجي أفتح من الشريط وظل داخلي ناعم والعدسة ساكنة: يميّزها أي ناظر فوراً.
+    // يزولان عند اللمس لتظهر الألوان المنكسرة تحتها.
     val rest = 1f - p
     if (rest > 0.01f) {
-        val r = CornerRadius(height / 2f)
         drawRoundRect(
-            color = Color(0xFF0B2530).copy(alpha = 0.035f * rest),
+            color = Color.White.copy(alpha = 0.16f * rest),
             topLeft = tl,
             size = Size(width, height),
-            cornerRadius = r,
+            cornerRadius = CornerRadius(height / 2f),
         )
         val steps = 5
-        val step = 1.2.dp.toPx()
+        val step = 1.3.dp.toPx()
         for (i in 0 until steps) {
             val inset = step * i + step / 2f
-            val a = 0.085f * rest * (1f - i / steps.toFloat())
             drawRoundRect(
-                color = Color(0xFF0B2530).copy(alpha = a),
+                color = Color.Black.copy(alpha = 0.12f * rest * (1f - i / steps.toFloat())),
                 topLeft = tl + Offset(inset, inset),
                 size = Size(width - 2f * inset, height - 2f * inset),
                 cornerRadius = CornerRadius(((height - 2f * inset) / 2f).coerceAtLeast(0f)),
@@ -582,7 +587,7 @@ private fun DrawScope.drawLensRim(
     // خط داكن رفيع خارج الحافة: يفصل العدسة عمّا تحتها بحدّ واضح.
     val hair = 1.dp.toPx()
     drawRoundRect(
-        color = Color.Black.copy(alpha = 0.10f + 0.14f * p),
+        color = Color.Black.copy(alpha = 0.12f + 0.14f * p),
         topLeft = tl - Offset(hair / 2f, hair / 2f),
         size = Size(width + hair, height + hair),
         cornerRadius = CornerRadius((height + hair) / 2f),
@@ -594,10 +599,10 @@ private fun DrawScope.drawLensRim(
     drawRoundRect(
         brush = Brush.linearGradient(
             colorStops = arrayOf(
-                0.00f to Color.White.copy(alpha = 0.50f + 0.30f * p),
-                0.28f to Color.White.copy(alpha = 0.08f),
-                0.72f to Color.White.copy(alpha = 0.08f),
-                1.00f to Color.White.copy(alpha = 0.40f + 0.30f * p),
+                0.00f to Color.White.copy(alpha = 0.70f + 0.25f * p),
+                0.28f to Color.White.copy(alpha = 0.26f + 0.10f * p),
+                0.72f to Color.White.copy(alpha = 0.26f + 0.10f * p),
+                1.00f to Color.White.copy(alpha = 0.60f + 0.30f * p),
             ),
             start = tl,
             end = tl + Offset(width, height),
@@ -636,7 +641,7 @@ private class LensEffectHolder {
         shader.setFloatUniform("uThick", thick)
         shader.setFloatUniform("uIndex", index)
         shader.setFloatUniform("uDisp", dispersion)
-        shader.setFloatUniform("uRefl", bezel * 0.32f)
+        shader.setFloatUniform("uRefl", bezel * 0.30f)
         shader.setFloatUniform("uLit", press)
         return AndroidRenderEffect.createRuntimeShaderEffect(shader, "content").asComposeRenderEffect()
     }
@@ -714,10 +719,8 @@ half4 main(float2 fragCoord) {
     // إضاءة الحافة: لمعة اتجاهية (الضوء من أعلى اليسار) مع توهّج فرنل خفيف.
     float dd = dot(outward, normalize(float2(-0.6, -0.8)));
     float band = pow(1.0 - t, 4.0);
-    float lit = band * (max(dd, 0.0) * 0.28 + max(-dd, 0.0) * 0.16) + 0.03 * (1.0 - t) * (1.0 - t);
+    float lit = band * (max(dd, 0.0) * 0.38 + max(-dd, 0.0) * 0.22) + 0.05 * (1.0 - t) * (1.0 - t);
     col.rgb += half3(half(lit * uLit)) * col.a;
-    // تظليل خفيف عند الحافة يحدّد الزجاج على الخلفية الفاتحة.
-    col.rgb *= half(1.0 - 0.10 * band * uLit);
     return col;
 }
 """

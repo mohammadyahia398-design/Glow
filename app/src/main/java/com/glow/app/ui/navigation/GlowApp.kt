@@ -58,6 +58,7 @@ import com.glow.app.ui.glass.surfaces.glassBackdropSource
 import com.glow.app.ui.glass.surfaces.rememberGlassBackdrop
 import com.glow.app.ui.common.GlowIcon
 import com.glow.app.ui.glass.components.LiquidBarItem
+import com.glow.app.ui.glass.components.LiquidBarIcon
 import com.glow.app.ui.glass.components.LiquidGlassBar
 import com.glow.app.ui.library.LibraryTab
 import com.glow.app.ui.library.MediaGroup
@@ -155,7 +156,7 @@ fun GlowApp(settings: SettingsStore, modifier: Modifier = Modifier) {
     var libraryTab by remember { mutableStateOf(LibraryTab.Tracks) }
     val barItems = remember {
         LibraryTab.barTabs.map { t ->
-            LiquidBarItem(t.name, t.label) { tint -> GlowIcon(t.icon, tint, 26.dp) }
+            LiquidBarItem(t.name, t.label) { tint -> LiquidBarIcon(t.icon, tint, 26.dp) }
         }
     }
     // أول معالج مسجَّل أقل أولوية: يُغلق المشغّل ثم الألبوم ثم الإعدادات.
