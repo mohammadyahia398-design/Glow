@@ -45,7 +45,7 @@ fun GlassButton(
     backdrop: GlassBackdrop? = null,
     enabled: Boolean = true,
     selected: Boolean = false,
-    style: GlassStyle = GlassStyle.Thin,
+    style: GlassStyle = GlassStyle.ClearInteractive,
     contentPadding: PaddingValues = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
     content: @Composable RowScope.() -> Unit,
 ) {
@@ -69,6 +69,7 @@ fun GlassButton(
         depth = GlassDepth.Raised,
         interaction = if (enabled) interaction else null,
         contentAlignment = Alignment.Center,
+        pressedScale = 1.05f,
     ) {
         Row(
             modifier = Modifier.padding(contentPadding),
@@ -94,7 +95,7 @@ fun GlassIconButton(
     enabled: Boolean = true,
     selected: Boolean = false,
     size: Dp = MinTouchTarget,
-    style: GlassStyle = GlassStyle.Thin,
+    style: GlassStyle = GlassStyle.ClearInteractive,
     content: @Composable BoxScope.() -> Unit,
 ) {
     val interaction = rememberGlassInteraction()
@@ -119,6 +120,7 @@ fun GlassIconButton(
         depth = GlassDepth.Raised,
         interaction = if (enabled) interaction else null,
         contentAlignment = Alignment.Center,
+        pressedScale = 1.10f,
         content = content,
     )
 }

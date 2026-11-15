@@ -29,6 +29,7 @@ import com.glow.app.ui.glass.lighting.LocalLightSource
 import kotlinx.coroutines.flow.collectLatest
 import kotlin.math.abs
 import kotlin.math.exp
+import kotlin.math.min
 
 /** سرعة تتبّع الضوء للّمس (1/ثانية). */
 private const val LIGHT_SPEED = 14f
@@ -45,6 +46,13 @@ private const val MAX_FRAME_SECONDS = 0.05f
 private const val ANGLE_EPS = 0.25f
 private const val INTENSITY_EPS = 0.01f
 private const val PRESS_EPS = 0.005f
+
+/** نابض الارتداد (حجم العنصر عند اللمس والإفلات): صلابة وتخميد أقل من الحرج فيتجاوز ثم يستقر. */
+private const val BOUNCE_STIFFNESS = 420f
+private const val BOUNCE_DAMPING = 21f
+private const val BOUNCE_SUBSTEP = 1f / 120f
+private const val BOUNCE_EPS = 0.002f
+private const val BOUNCE_VEL_EPS = 0.02f
 
 /**
  * بديل «بلا مؤشر» مكتوب النوع صراحةً لتفادي التباس تحميل clickable الزائد عند تمرير null.
@@ -82,6 +90,12 @@ class GlassInteractionState internal constructor(
 
     var pressProgress by mutableFloatStateOf(0f)
         private set
+
+    /** تقدّم نابضي للحجم فقط: يتجاوز 1 قليلاً عند الضغط ويرتدّ عند الإفلات. */
+    var bounceProgress by mutableFloatStateOf(0f)
+        private set
+
+    private var bounceVelocity = 0f
 
     /** true عندما توجد حركة تحتاج إلى إطارات. */
     internal var needsFrames by mutableStateOf(false)
@@ -123,14 +137,32 @@ class GlassInteractionState internal constructor(
         val goal = if (isPressed) 1f else 0f
         pressProgress += (goal - pressProgress) * pressK
 
+        if (reduceMotion) {
+            bounceProgress = goal
+            bounceVelocity = 0f
+        } else {
+            var left = dt
+            while (left > 0f) {
+                val h = min(left, BOUNCE_SUBSTEP)
+                val accel = BOUNCE_STIFFNESS * (goal - bounceProgress) - BOUNCE_DAMPING * bounceVelocity
+                bounceVelocity += accel * h
+                bounceProgress += bounceVelocity * h
+                left -= h
+            }
+        }
+
         val settled = angleDelta(current.angleDegrees, target.angleDegrees) < ANGLE_EPS &&
             abs(current.intensity - target.intensity) < INTENSITY_EPS &&
-            abs(goal - pressProgress) < PRESS_EPS
+            abs(goal - pressProgress) < PRESS_EPS &&
+            abs(goal - bounceProgress) < BOUNCE_EPS &&
+            abs(bounceVelocity) < BOUNCE_VEL_EPS
 
         if (settled) {
             current = target
             light.snapTo(target)
             pressProgress = goal
+            bounceProgress = goal
+            bounceVelocity = 0f
             needsFrames = false
         }
         return !settled
@@ -192,7 +224,8 @@ fun Modifier.glassPressLight(state: GlassInteractionState): Modifier =
     }
 
 /**
- * يصغّر العنصر قليلاً أثناء الضغط. لا يفعل شيئاً عند تقليل الحركة.
+ * يغيّر حجم العنصر أثناء الضغط بنابض يتجاوز قليلاً ثم يستقر (ارتداد). قيمة أقل من 1 تصغّره، وأكبر منها تكبّره.
+ * لا يفعل شيئاً عند تقليل الحركة.
  * القراءة داخل graphicsLayer فلا تسبب إعادة تركيب.
  */
 fun Modifier.glassPressScale(
@@ -201,7 +234,7 @@ fun Modifier.glassPressScale(
 ): Modifier {
     if (state.reduceMotion) return this
     return graphicsLayer {
-        val scale = 1f + (pressedScale - 1f) * state.pressProgress
+        val scale = 1f + (pressedScale - 1f) * state.bounceProgress
         scaleX = scale
         scaleY = scale
     }

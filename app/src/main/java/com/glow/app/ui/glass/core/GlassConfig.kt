@@ -99,6 +99,20 @@ data class GlassStyle(
             refractionStrength = 1.00f,
         )
 
+        /**
+         * زجاج شفاف تفاعلي: شبه بلا تلوين ولا تمويه يُذكر، فتظهر الخلفية بوضوح وتنكسر عند الحافة،
+         * مع حافة ولمعة أوضح ليبقى الزر مقروءاً. للأزرار الطافية فوق خلفية ملوّنة.
+         */
+        val ClearInteractive = GlassStyle(
+            blurRadius = 8.dp,
+            tintAlpha = 0.04f,
+            fallbackTintAlpha = 0.14f,
+            borderAlpha = 0.22f,
+            highlightAlpha = 0.42f,
+            specularAlpha = 0.20f,
+            refractionStrength = 1.00f,
+        )
+
         /** رقيق جداً: تراكبات خفيفة وعناصر ثانوية. تمويه قليل، حد ولمعان هادئان. */
         val UltraThin = GlassStyle(
             blurRadius = 8.dp,

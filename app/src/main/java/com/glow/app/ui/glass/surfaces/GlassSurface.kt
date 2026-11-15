@@ -54,6 +54,7 @@ object GlassSurfaceDefaults {
  *
  * @param backdrop الخلفية المشتركة؛ null يعني زجاجاً بلا التقاط (تلوين وإضاءة فقط).
  * @param interaction حالة تفاعل اختيارية؛ عند تمريرها يتبع الضوء اللمس ويتغير الحجم عند الضغط.
+ * @param pressedScale حجم العنصر عند الضغط الكامل (أقل من 1 يصغّر، وأكبر يكبّر)، ويرتدّ بنابض.
  */
 @Composable
 fun GlassSurface(
@@ -64,6 +65,7 @@ fun GlassSurface(
     depth: GlassDepth = GlassDepth.Raised,
     interaction: GlassInteractionState? = null,
     contentAlignment: Alignment = Alignment.TopStart,
+    pressedScale: Float = 0.97f,
     content: @Composable BoxScope.() -> Unit,
 ) {
     val config = LocalGlassConfig.current
@@ -86,7 +88,7 @@ fun GlassSurface(
 
     val interactionModifier = if (interaction != null) {
         Modifier
-            .glassPressScale(interaction)
+            .glassPressScale(interaction, pressedScale)
             .glassPressLight(interaction)
     } else {
         Modifier
