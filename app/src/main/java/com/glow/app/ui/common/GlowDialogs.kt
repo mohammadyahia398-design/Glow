@@ -1,5 +1,7 @@
 package com.glow.app.ui.common
 
+import android.os.Build
+import android.view.WindowManager
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -21,15 +23,21 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogWindowProvider
 import com.glow.app.ui.theme.LocalGlowSkin
 
 /**
@@ -45,11 +53,34 @@ fun GlowDialog(
 ) {
     val skin = LocalGlowSkin.current
     Dialog(onDismissRequest = onDismiss) {
+        DialogBackdropBlur()
+        val glassShape = RoundedCornerShape(32.dp)
         Column(
             Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(28.dp))
-                .background(skin.sheet)
+                .clip(glassShape)
+                .background(skin.sheet.copy(alpha = 0.90f))
+                .drawBehind {
+                    // لمعة علوية وصبغة سماوية خفيفة من الأسفل
+                    drawRect(
+                        Brush.verticalGradient(
+                            listOf(Color.White.copy(alpha = 0.10f), Color.Transparent),
+                            endY = size.height * 0.35f,
+                        ),
+                    )
+                    drawRect(
+                        Brush.verticalGradient(
+                            listOf(skin.accent.copy(alpha = 0f), skin.accent.copy(alpha = 0.16f)),
+                            startY = size.height * 0.5f,
+                            endY = size.height,
+                        ),
+                    )
+                }
+                .border(
+                    1.dp,
+                    Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.40f), Color.White.copy(alpha = 0.05f))),
+                    glassShape,
+                )
                 .padding(top = 24.dp, bottom = 12.dp),
         ) {
             Text(
@@ -91,20 +122,23 @@ fun RowScope.GlowDialogAction(
     primary: Boolean = false,
 ) {
     val skin = LocalGlowSkin.current
+    val solid = if (skin.isDark) Color(0xFFF8FAFF) else Color(0xFF0B1620)
+    val onSolid = if (skin.isDark) Color(0xFF07141C) else Color.White
     Box(
         Modifier
             .weight(1f)
-            .height(48.dp)
-            .clip(RoundedCornerShape(24.dp))
+            .height(52.dp)
+            .clip(RoundedCornerShape(26.dp))
+            .background(if (primary) solid else skin.chip)
             .alpha(if (enabled) 1f else 0.4f)
             .clickable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             text,
-            color = if (primary) skin.accentText else skin.textSecondary,
+            color = if (primary) onSolid else skin.text,
             fontSize = 16.sp,
-            fontWeight = FontWeight.SemiBold,
+            fontWeight = FontWeight.Bold,
         )
     }
 }
@@ -161,6 +195,25 @@ private fun GlowRadio(selected: Boolean) {
                     .size(10.dp)
                     .background(skin.accentText, CircleShape),
             )
+        }
+    }
+}
+
+/** يطلب من النظام تمويه ما خلف النافذة (أندرويد 12+). يُتجاهل بصمت إن لم يتوفر. */
+@Composable
+private fun DialogBackdropBlur() {
+    val view = LocalView.current
+    SideEffect {
+        runCatching {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                val window = (view.parent as? DialogWindowProvider)?.window
+                if (window != null) {
+                    window.addFlags(WindowManager.LayoutParams.FLAG_BLUR_BEHIND)
+                    val attrs = window.attributes
+                    attrs.blurBehindRadius = 28
+                    window.attributes = attrs
+                }
+            }
         }
     }
 }

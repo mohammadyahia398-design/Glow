@@ -98,6 +98,22 @@ fun ArtMiniPlayer(
                         endY = size.height * 0.5f,
                     ),
                 )
+                // صبغة زجاجية متدرجة من الأسفل بلون الغلاف
+                drawRect(
+                    Brush.verticalGradient(
+                        colors = listOf(primary.copy(alpha = 0f), primary.copy(alpha = 0.32f)),
+                        startY = size.height * 0.35f,
+                        endY = size.height,
+                    ),
+                )
+                // حافة علوية زجاجية رفيعة تتلاشى عند الطرفين
+                drawRect(
+                    Brush.horizontalGradient(
+                        listOf(Color.Transparent, Color.White.copy(alpha = 0.85f), Color.Transparent),
+                    ),
+                    topLeft = Offset(size.width * 0.06f, 0f),
+                    size = Size(size.width * 0.88f, 1.5.dp.toPx()),
+                )
             }
             .border(
                 1.dp,

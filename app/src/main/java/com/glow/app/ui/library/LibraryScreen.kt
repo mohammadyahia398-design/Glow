@@ -52,6 +52,7 @@ import com.glow.app.ui.common.AlbumArt
 import com.glow.app.ui.common.CoverCell
 import com.glow.app.ui.common.GlowDialog
 import com.glow.app.ui.common.GlowDialogAction
+import com.glow.app.ui.common.GlowEmptyState
 import com.glow.app.ui.common.GlowIcon
 import com.glow.app.ui.common.GlowIconTap
 import com.glow.app.ui.common.GlowSettingsButton
@@ -175,21 +176,46 @@ fun LibraryScreen(
             val gridPad = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = LibraryBottomInset)
             when {
                 !hasAudioAccess -> PermissionPrompt(onRequestPermission)
-                loaded && tracks.isEmpty() -> CenteredMessage("لا توجد موسيقى على هذا الجهاز")
-                tab == LibraryTab.Spotify -> CenteredMessage("تكامل Spotify غير متاح بعد")
+                loaded && tracks.isEmpty() -> GlowEmptyState(
+                    title = "لا توجد موسيقى",
+                    message = "لم نجد أي ملف صوتي على هذا الجهاز. أضف أغاني ثم أعد فتح Glow.",
+                    icon = IconKind.Note,
+                    actionLabel = "فتح الإعدادات",
+                    onAction = onOpenSettings,
+                )
+                tab == LibraryTab.Spotify -> GlowEmptyState(
+                    title = "Spotify قريباً",
+                    message = "تكامل Spotify غير متاح بعد.",
+                    icon = IconKind.Playlist,
+                )
                 tab == LibraryTab.Playlists -> PlaylistsTab(
                     recent = recent, most = most, playlists = playlists, pad = pad,
                     onOpen = onOpen, onNew = { newPlaylist = NewPlaylist(null) },
                 )
-                shown.isEmpty() && loaded -> CenteredMessage("لا نتائج")
+                shown.isEmpty() && loaded -> GlowEmptyState(
+                    title = "لا نتائج",
+                    message = "جرّب كلمات بحث أخرى.",
+                    icon = IconKind.Note,
+                    badge = IconKind.Search,
+                    actionLabel = "مسح البحث",
+                    onAction = { query = "" },
+                )
                 tab == LibraryTab.Tracks -> TrackList(shown, currentId, pad, onPlay) { actionTrack = it }
                 tab == LibraryTab.Favorites -> if (favorites.isEmpty()) {
-                    CenteredMessage("اضغط مطولاً على أي أغنية لإضافتها إلى المفضلة")
+                    GlowEmptyState(
+                        title = "لا مفضلات بعد",
+                        message = "اضغط مطولاً على أي أغنية لإضافتها إلى المفضلة.",
+                        icon = IconKind.Heart,
+                    )
                 } else {
                     TrackList(favorites, currentId, pad, onPlay) { actionTrack = it }
                 }
                 tab == LibraryTab.Genres -> if (genres.isEmpty()) {
-                    CenteredMessage("لا تتوفر معلومات الأنواع على هذا الجهاز")
+                    GlowEmptyState(
+                        title = "لا أنواع",
+                        message = "لا تتوفر معلومات الأنواع على هذا الجهاز.",
+                        icon = IconKind.Album,
+                    )
                 } else {
                     LazyColumn(Modifier.fillMaxSize(), contentPadding = pad) {
                         items(genres, key = { it.title }) { g ->
@@ -460,19 +486,13 @@ private fun SearchField(value: String, onChange: (String) -> Unit) {
 
 @Composable
 private fun PermissionPrompt(onRequestPermission: () -> Unit) {
-    val skin = LocalGlowSkin.current
-    Column(
-        Modifier.fillMaxSize().padding(32.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Text("يحتاج Glow إذن قراءة الموسيقى لعرض مكتبتك", color = skin.text, fontSize = 16.sp)
-        Button(
-            onClick = onRequestPermission,
-            modifier = Modifier.padding(top = 16.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = skin.accent, contentColor = skin.onAccent),
-        ) { Text("السماح") }
-    }
+    GlowEmptyState(
+        title = "نحتاج إذن الموسيقى",
+        message = "يحتاج Glow إذن قراءة الموسيقى لعرض مكتبتك.",
+        icon = IconKind.Note,
+        actionLabel = "السماح",
+        onAction = onRequestPermission,
+    )
 }
 
 @Composable
