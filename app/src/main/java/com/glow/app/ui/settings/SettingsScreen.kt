@@ -109,10 +109,6 @@ fun SettingsScreen(
             AppearancePicker(store.themeMode) { store.updateThemeMode(it) }
         }
 
-        Section("الألوان") {
-            BackgroundPicker(store)
-        }
-
         Section("التشغيل") {
             Item(IconKind.Speed, "سرعة التشغيل", speedLabel(store.playbackSpeed)) { dlg = Dlg.SPEED }
             Divider()
@@ -408,99 +404,4 @@ private fun DrawScope.paintPhone(dark: Boolean) {
         size = Size(w * .76f, h * .5f),
         cornerRadius = CornerRadius(h * .08f),
     )
-}
-
-/** اختيار الخلفية: من اللوحة أو أسود أو أبيض أو لون مخصّص. */
-@Composable
-private fun BackgroundPicker(store: SettingsStore) {
-    val skin = LocalGlowSkin.current
-    val options = listOf(
-        BgChoice.PALETTE to "اللوحة",
-        BgChoice.BLACK to "أسود",
-        BgChoice.WHITE to "أبيض",
-        BgChoice.CUSTOM to "مخصّص",
-    )
-    Column(Modifier.fillMaxWidth().padding(bottom = 14.dp)) {
-        Text(
-            "الخلفية",
-            color = skin.text,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.padding(start = 18.dp, end = 18.dp, top = 6.dp, bottom = 10.dp),
-        )
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            options.forEach { (choice, label) ->
-                val on = store.bgChoice == choice
-                Box(
-                    Modifier
-                        .weight(1f)
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(if (on) skin.accent else skin.chip)
-                        .clickable { store.updateBgChoice(choice) }
-                        .padding(vertical = 12.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        label,
-                        color = if (on) skin.onAccent else skin.text,
-                        fontSize = 14.sp,
-                        fontWeight = if (on) FontWeight.SemiBold else FontWeight.Normal,
-                    )
-                }
-            }
-        }
-        if (store.bgChoice == BgChoice.CUSTOM) {
-            Text(
-                "لون الخلفية",
-                color = skin.textSecondary,
-                fontSize = 14.sp,
-                modifier = Modifier.padding(start = 18.dp, end = 18.dp, top = 14.dp),
-            )
-            HsvPicker(store.customBg) { store.updateCustomBg(it) }
-        }
-        if (!(store.paletteId == Colorways.Glow.id && store.bgChoice == BgChoice.PALETTE)) {
-            Text(
-                "خيار «المظهر» أعلاه يعمل مع لوحة «سماوي» فقط؛ الخلفية هنا تحدد الفاتح والداكن.",
-                color = skin.textSecondary,
-                fontSize = 12.sp,
-                modifier = Modifier.padding(start = 18.dp, end = 18.dp, top = 12.dp),
-            )
-        }
-    }
-}
-
-/** معاينة لون ومنزلق التشبّع فقط. */
-@Composable
-private fun HsvPicker(color: Color, onChange: (Color) -> Unit) {
-    val skin = LocalGlowSkin.current
-    val initial = remember { colorToHsv(color) }
-    val h = initial[0]
-    var s by remember { mutableFloatStateOf(initial[1]) }
-    val v = initial[2]
-    Column(
-        Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .height(44.dp)
-                .clip(RoundedCornerShape(22.dp))
-                .background(color)
-                .border(1.5.dp, Color.White.copy(alpha = 0.35f), RoundedCornerShape(22.dp)),
-        )
-        GlowGlassSlider(
-            label = "التشبّع",
-            valueText = "${(s * 100).toInt()}%",
-            value = s,
-            onValueChange = { s = it; onChange(hsvColor(h, s, v)) },
-            fillColors = listOf(hsvColor(h, 0f, v), hsvColor(h, 1f, v)),
-            rimColor = skin.accent,
-        )
-    }
 }

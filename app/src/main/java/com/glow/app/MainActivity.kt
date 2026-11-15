@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.glow.app.settings.SettingsStore
 import com.glow.app.settings.ThemeMode
+import com.glow.app.ui.theme.GlowSkins
 import com.glow.app.ui.navigation.GlowApp
 import com.glow.app.ui.splash.GlowSplash
 import com.glow.app.ui.theme.GlowTheme
@@ -36,13 +37,7 @@ class MainActivity : ComponentActivity() {
                 ThemeMode.LIGHT -> false
                 ThemeMode.DARK -> true
             }
-            val skin = resolveSkin(
-                paletteId = settings.paletteId,
-                bgChoice = settings.bgChoice,
-                customAccent = settings.customAccent,
-                customBg = settings.customBg,
-                darkTheme = dark,
-            )
+            val skin = if (dark) GlowSkins.Dark else GlowSkins.Light
             GlowTheme(darkTheme = skin.isDark, customSkin = skin) {
                 var showSplash by rememberSaveable { mutableStateOf(true) }
                 Box(Modifier.fillMaxSize()) {
