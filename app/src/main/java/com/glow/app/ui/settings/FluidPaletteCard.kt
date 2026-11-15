@@ -74,6 +74,8 @@ private class FluidSim {
         w = width
         h = height
         if (first && w > 0f) {
+            tx = 0.40f * w
+            ty = 0.30f * h
             for (i in 0..3) {
                 x[i] = homeX[i] * w
                 y[i] = homeY[i] * h
@@ -134,9 +136,9 @@ private class FluidSim {
 }
 
 /**
- * شيدر AGSL: كل بقعة لها «مجال» غاوسي، واللون عند كل بكسل هو الأقوى مجالاً بحدّ ناعم ضيّق
- * (softmax حادّ)، لا مزج الألوان؛ فلا يتولّد رمادي بين لونين، بل تتجاور كالماء والزيت.
- * على الحدّ بين لونين خطّ لامع رفيع (سطح السائل)، وتحت الإصبع توهّج خفيف.
+ * شيدر AGSL: كل بقعة لها «مجال» غاوسي واسع، واللون عند كل بكسل مزج ناعم متصل بين الألوان
+ * بأوزان أُسّية خفيفة، فتنساب الألوان في بعضها كتدرّج زجاجي سائل بلا حدود حادّة.
+ * حافة البطاقة تميل إلى بياض حليبي خفيف، وتحت الإصبع لمعة ناعمة، وحبيبات دقيقة كالصور المرجعية.
  */
 @RequiresApi(Build.VERSION_CODES.TIRAMISU)
 private class FluidShader {
@@ -151,7 +153,7 @@ private class FluidShader {
         shader.setFloatUniform("uP1", sim.x[1], sim.y[1])
         shader.setFloatUniform("uP2", sim.x[2], sim.y[2])
         shader.setFloatUniform("uP3", sim.x[3], sim.y[3])
-        shader.setFloatUniform("uRad", m * 0.62f, m * 0.58f, m * 0.56f, m * 0.60f)
+        shader.setFloatUniform("uRad", m * 0.82f, m * 0.78f, m * 0.76f, m * 0.80f)
         shader.setFloatUniform("uC0", colors[0].red, colors[0].green, colors[0].blue)
         shader.setFloatUniform("uC1", colors[1].red, colors[1].green, colors[1].blue)
         shader.setFloatUniform("uC2", colors[2].red, colors[2].green, colors[2].blue)
@@ -180,7 +182,7 @@ uniform float uTouchAmt;
 
 half4 main(float2 fc) {
     float m = min(uSize.x, uSize.y);
-    float2 warp = float2(sin(fc.y * 0.024 + uTime * 1.4), cos(fc.x * 0.021 - uTime * 1.2)) * (m * 0.022);
+    float2 warp = float2(sin(fc.y * 0.016 + uTime * 1.1), cos(fc.x * 0.014 - uTime * 0.9)) * (m * 0.035);
     float2 q = fc + warp;
 
     float2 d0 = q - uP0;
@@ -192,25 +194,29 @@ half4 main(float2 fc) {
     float s2 = exp(-dot(d2, d2) / (uRad.z * uRad.z));
     float s3 = exp(-dot(d3, d3) / (uRad.w * uRad.w));
 
-    float k = 18.0;
+    float k = 3.6;
     float w0 = exp(k * s0);
     float w1 = exp(k * s1);
     float w2 = exp(k * s2);
     float w3 = exp(k * s3);
-    float wb = exp(k * 0.20);
+    float wb = exp(k * 0.10);
     float sum = w0 + w1 + w2 + w3 + wb;
 
     float3 col = (uC0 * w0 + uC1 * w1 + uC2 * w2 + uC3 * w3 + uBase * wb) / sum;
 
-    float mx = max(max(max(w0, w1), max(w2, w3)), wb);
-    float edge = 1.0 - mx / sum;
-    float line = smoothstep(0.12, 0.50, edge);
-    col = col + float3(line * 0.20);
+    float2 p = fc - uSize * 0.5;
+    float r = m * 0.12;
+    float2 qq = abs(p) - uSize * 0.5 + float2(r);
+    float sd = min(max(qq.x, qq.y), 0.0) + length(max(qq, float2(0.0))) - r;
+    float rim = 1.0 - smoothstep(0.0, m * 0.18, -sd);
+    col = mix(col, float3(0.96, 0.94, 0.98), rim * 0.20);
 
-    col = col + float3(0.05 * (1.0 - fc.y / uSize.y));
+    float2 dh = fc - uTouch;
+    float hi = exp(-dot(dh, dh) / (m * m * 0.12));
+    col = col + float3(hi * (0.10 + 0.30 * uTouchAmt));
 
-    float2 dt = fc - uTouch;
-    col = col + float3(uTouchAmt * 0.12 * exp(-dot(dt, dt) / (m * m * 0.10)));
+    float n = fract(sin(dot(fc, float2(12.9898, 78.233))) * 43758.5453);
+    col = col + float3((n - 0.5) * 0.035);
 
     return half4(half3(clamp(col, float3(0.0), float3(1.0))), 1.0);
 }
