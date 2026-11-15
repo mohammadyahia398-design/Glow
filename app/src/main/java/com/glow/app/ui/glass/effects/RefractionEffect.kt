@@ -22,13 +22,13 @@ import com.glow.app.ui.glass.core.GlassTier
 import kotlin.math.min
 
 /** أقصى عرض لشريط الانكسار عند الحافة. */
-private val MaxEdgeWidth = 20.dp
+private val MaxEdgeWidth = 26.dp
 
 /** أقصى إزاحة (عند الحافة) في أقصى قوة انكسار. */
-private val MaxShift = 14.dp
+private val MaxShift = 30.dp
 
 /** أقصى تشتّت لوني نسبي. */
-private const val MAX_DISPERSION = 0.10f
+private const val MAX_DISPERSION = 0.16f
 
 /**
  * نصف قطر الزوايا الموحّد الذي يستخدمه الشيدر، أو null إذا كان الشكل غير مدعوم.

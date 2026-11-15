@@ -139,12 +139,12 @@ data class LiquidBarSpec(
     val springStiffness: Float = 380f,
     val pressDamping: Float = 0.60f,
     val pressStiffness: Float = 300f,
-    val magnify: Float = 1.05f,
-    val bleed: Dp = 24.dp,
-    val bezel: Dp = 14.dp,
-    val thickness: Dp = 30.dp,
-    val refractiveIndex: Float = 1.5f,
-    val dispersion: Float = 0.12f,
+    val magnify: Float = 1.22f,
+    val bleed: Dp = 48.dp,
+    val bezel: Dp = 26.dp,
+    val thickness: Dp = 48.dp,
+    val refractiveIndex: Float = 1.6f,
+    val dispersion: Float = 0.20f,
 )
 
 /**
@@ -643,7 +643,7 @@ private class LensEffectHolder {
         shader.setFloatUniform("uThick", thick)
         shader.setFloatUniform("uIndex", index)
         shader.setFloatUniform("uDisp", dispersion)
-        shader.setFloatUniform("uRefl", bezel * 0.30f)
+        shader.setFloatUniform("uRefl", bezel * 0.38f)
         shader.setFloatUniform("uLit", press)
         return AndroidRenderEffect.createRuntimeShaderEffect(shader, "content").asComposeRenderEffect()
     }
@@ -721,7 +721,7 @@ half4 main(float2 fragCoord) {
     // إضاءة الحافة: لمعة اتجاهية (الضوء من أعلى اليسار) مع توهّج فرنل خفيف.
     float dd = dot(outward, normalize(float2(-0.6, -0.8)));
     float band = pow(1.0 - t, 4.0);
-    float lit = band * (max(dd, 0.0) * 0.38 + max(-dd, 0.0) * 0.22) + 0.05 * (1.0 - t) * (1.0 - t);
+    float lit = band * (max(dd, 0.0) * 0.55 + max(-dd, 0.0) * 0.30) + 0.05 * (1.0 - t) * (1.0 - t);
     col.rgb += half3(half(lit * uLit)) * col.a;
     return col;
 }
