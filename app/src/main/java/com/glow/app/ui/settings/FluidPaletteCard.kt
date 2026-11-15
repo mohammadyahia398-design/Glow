@@ -18,8 +18,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
@@ -30,20 +30,29 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ShaderBrush
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.glow.app.ui.common.GlowIcon
 import com.glow.app.ui.common.IconKind
 import kotlin.math.cos
+import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sin
 import kotlin.math.sqrt
 
 /**
- * محاكاة أربع بقع سائلة داخل بطاقة. كل بقعة نابض يشدّها إلى موضعها الأصلي (مع انجراف بطيء)،
- * والإصبع يدفعها بعيداً ويسحبها مع حركته، فترتدّ بعد الإفلات كالسائل.
+ * محاكاة أربع بقع سائلة داخل بطاقة. لكل بقعة كتلة مختلفة، فتتبع الإصبع بتفاوت وتنفصل وتلتقي.
+ *
+ * - اللمس: دفعة رذاذ فورية بعيداً عن نقطة اللمس، وتموّج دائري يتّسع.
+ * - الإمساك: البقع تنجذب إلى الإصبع كمغناطيس، وتُدفع عنه إن اقتربت جداً، وتدور حوله مع سرعة حركته.
+ * - الإفلات: ارتداد هلامي نحو الإصبع ثم تعود إلى مواضعها.
+ * - بلا لمس: انجراف بطيء، ولمعة تتجوّل وحدها.
  */
 private class FluidSim {
     val x = FloatArray(4)
@@ -58,24 +67,35 @@ private class FluidSim {
         private set
     var touchAmt = 0f
         private set
-    var tx = 0f
+    var hx = 0f
         private set
-    var ty = 0f
+    var hy = 0f
         private set
+    var pressX = 0f
+        private set
+    var pressY = 0f
+        private set
+    var ripple = 1f
+        private set
+    private var tx = 0f
+    private var ty = 0f
     private var touching = false
     private var fvx = 0f
     private var fvy = 0f
 
     private val homeX = floatArrayOf(0.26f, 0.76f, 0.30f, 0.78f)
     private val homeY = floatArrayOf(0.28f, 0.30f, 0.76f, 0.74f)
+    private val mass = floatArrayOf(1.0f, 0.8f, 1.25f, 0.9f)
 
     fun resize(width: Float, height: Float) {
         val first = w <= 0f
         w = width
         h = height
         if (first && w > 0f) {
-            tx = 0.40f * w
-            ty = 0.30f * h
+            hx = 0.40f * w
+            hy = 0.30f * h
+            pressX = hx
+            pressY = hy
             for (i in 0..3) {
                 x[i] = homeX[i] * w
                 y[i] = homeY[i] * h
@@ -87,8 +107,22 @@ private class FluidSim {
         touching = true
         tx = px
         ty = py
+        pressX = px
+        pressY = py
+        ripple = 0f
         fvx = 0f
         fvy = 0f
+        if (w <= 0f) return
+        val m = min(w, h)
+        val reach = m * 0.95f
+        for (i in 0..3) {
+            val dx = x[i] - px
+            val dy = y[i] - py
+            val dist = sqrt(dx * dx + dy * dy) + 0.001f
+            val f = max(0f, 1f - dist / reach)
+            vx[i] += dx / dist * f * m * 2.4f
+            vy[i] += dy / dist * f * m * 2.4f
+        }
     }
 
     fun move(px: Float, py: Float, dx: Float, dy: Float) {
@@ -100,45 +134,76 @@ private class FluidSim {
 
     fun release() {
         touching = false
+        if (w <= 0f) return
+        val m = min(w, h)
+        val reach = m * 1.1f
+        for (i in 0..3) {
+            val dx = tx - x[i]
+            val dy = ty - y[i]
+            val dist = sqrt(dx * dx + dy * dy) + 0.001f
+            val f = max(0f, 1f - dist / reach)
+            vx[i] += dx / dist * f * m * 1.6f
+            vy[i] += dy / dist * f * m * 1.6f
+        }
     }
 
     fun step(dt: Float, seconds: Float) {
         time = seconds
         if (w <= 0f || h <= 0f) return
         val m = min(w, h)
-        val reach = m * 0.62f
-        touchAmt += ((if (touching) 1f else 0f) - touchAmt) * min(1f, dt * 8f)
-        fvx *= 1f - min(1f, dt * 10f)
-        fvy *= 1f - min(1f, dt * 10f)
+        val reachPull = m * 1.15f
+        val reachPush = m * 0.50f
+        touchAmt += ((if (touching) 1f else 0f) - touchAmt) * min(1f, dt * 9f)
+        ripple = min(1f, ripple + dt / 1.1f)
+        fvx *= 1f - min(1f, dt * 8f)
+        fvy *= 1f - min(1f, dt * 8f)
+
+        val gx = if (touching) tx else w * (0.40f + 0.14f * sin(seconds * 0.55f))
+        val gy = if (touching) ty else h * (0.30f + 0.10f * cos(seconds * 0.43f))
+        val hk = min(1f, dt * (if (touching) 14f else 3f))
+        hx += (gx - hx) * hk
+        hy += (gy - hy) * hk
+
+        val speed = sqrt(fvx * fvx + fvy * fvy)
         for (i in 0..3) {
-            val hx = homeX[i] * w + sin(seconds * 0.7f + i * 1.9f) * 0.07f * w
-            val hy = homeY[i] * h + cos(seconds * 0.6f + i * 2.4f) * 0.07f * h
-            var ax = (hx - x[i]) * 34f
-            var ay = (hy - y[i]) * 34f
+            val homeXi = homeX[i] * w + sin(seconds * 0.7f + i * 1.9f) * 0.09f * w
+            val homeYi = homeY[i] * h + cos(seconds * 0.6f + i * 2.4f) * 0.09f * h
+            val k = 34f / mass[i]
+            var ax = (homeXi - x[i]) * k
+            var ay = (homeYi - y[i]) * k
             if (touching) {
                 val dx = x[i] - tx
                 val dy = y[i] - ty
                 val dist = sqrt(dx * dx + dy * dy) + 0.001f
-                if (dist < reach) {
-                    val f = 1f - dist / reach
-                    val push = f * f * 14f * m
-                    ax += dx / dist * push + fvx * f * 5f
-                    ay += dy / dist * push + fvy * f * 5f
+                val fp = max(0f, 1f - dist / reachPull)
+                // مغناطيس: انجذاب نحو الإصبع
+                ax -= dx / dist * fp * fp * 11f * m / mass[i]
+                ay -= dy / dist * fp * fp * 11f * m / mass[i]
+                // تنافر قريب كي لا تنطبق البقعة على الإصبع
+                if (dist < reachPush) {
+                    val f = 1f - dist / reachPush
+                    ax += dx / dist * f * f * 16f * m
+                    ay += dy / dist * f * f * 16f * m
                 }
+                // دوران حول الإصبع يزداد مع سرعته، وسحب مع اتجاهه
+                val sw = fp * min(speed, 2500f) * 0.9f
+                ax += -dy / dist * sw + fvx * fp * 4f
+                ay += dx / dist * sw + fvy * fp * 4f
             }
-            val damp = 1f - min(0.9f, 4.5f * dt)
+            val damp = 1f - min(0.9f, 3.6f * dt)
             vx[i] = (vx[i] + ax * dt) * damp
             vy[i] = (vy[i] + ay * dt) * damp
-            x[i] = (x[i] + vx[i] * dt).coerceIn(-0.2f * w, 1.2f * w)
-            y[i] = (y[i] + vy[i] * dt).coerceIn(-0.2f * h, 1.2f * h)
+            x[i] = (x[i] + vx[i] * dt).coerceIn(-0.25f * w, 1.25f * w)
+            y[i] = (y[i] + vy[i] * dt).coerceIn(-0.25f * h, 1.25f * h)
         }
     }
 }
 
 /**
- * شيدر AGSL: كل بقعة لها «مجال» غاوسي واسع، واللون عند كل بكسل مزج ناعم متصل بين الألوان
- * بأوزان أُسّية خفيفة، فتنساب الألوان في بعضها كتدرّج زجاجي سائل بلا حدود حادّة.
- * حافة البطاقة تميل إلى بياض حليبي خفيف، وتحت الإصبع لمعة ناعمة، وحبيبات دقيقة كالصور المرجعية.
+ * شيدر AGSL: كل بقعة لها «مجال» غاوسي، واللون عند كل بكسل مزج ناعم متصل بين الألوان
+ * بأوزان أُسّية، فتنساب الألوان في بعضها كتدرّج زجاجي سائل بلا حدود حادّة.
+ * حافة البطاقة تميل إلى بياض حليبي، وتحت الإصبع لمعة تتبعه، وعند اللمس تموّج دائري يتّسع،
+ * وحبيبات دقيقة كالصور المرجعية.
  */
 @RequiresApi(Build.VERSION_CODES.TIRAMISU)
 private class FluidShader {
@@ -153,14 +218,16 @@ private class FluidShader {
         shader.setFloatUniform("uP1", sim.x[1], sim.y[1])
         shader.setFloatUniform("uP2", sim.x[2], sim.y[2])
         shader.setFloatUniform("uP3", sim.x[3], sim.y[3])
-        shader.setFloatUniform("uRad", m * 0.82f, m * 0.78f, m * 0.76f, m * 0.80f)
+        shader.setFloatUniform("uRad", m * 0.70f, m * 0.66f, m * 0.64f, m * 0.68f)
         shader.setFloatUniform("uC0", colors[0].red, colors[0].green, colors[0].blue)
         shader.setFloatUniform("uC1", colors[1].red, colors[1].green, colors[1].blue)
         shader.setFloatUniform("uC2", colors[2].red, colors[2].green, colors[2].blue)
         shader.setFloatUniform("uC3", colors[3].red, colors[3].green, colors[3].blue)
         shader.setFloatUniform("uBase", base.red, base.green, base.blue)
-        shader.setFloatUniform("uTouch", sim.tx, sim.ty)
+        shader.setFloatUniform("uHi", sim.hx, sim.hy)
         shader.setFloatUniform("uTouchAmt", sim.touchAmt)
+        shader.setFloatUniform("uPress", sim.pressX, sim.pressY)
+        shader.setFloatUniform("uRipple", sim.ripple)
     }
 
     companion object {
@@ -177,8 +244,10 @@ uniform float3 uC1;
 uniform float3 uC2;
 uniform float3 uC3;
 uniform float3 uBase;
-uniform float2 uTouch;
+uniform float2 uHi;
 uniform float uTouchAmt;
+uniform float2 uPress;
+uniform float uRipple;
 
 half4 main(float2 fc) {
     float m = min(uSize.x, uSize.y);
@@ -194,12 +263,12 @@ half4 main(float2 fc) {
     float s2 = exp(-dot(d2, d2) / (uRad.z * uRad.z));
     float s3 = exp(-dot(d3, d3) / (uRad.w * uRad.w));
 
-    float k = 3.6;
+    float k = 4.6;
     float w0 = exp(k * s0);
     float w1 = exp(k * s1);
     float w2 = exp(k * s2);
     float w3 = exp(k * s3);
-    float wb = exp(k * 0.10);
+    float wb = exp(k * 0.08);
     float sum = w0 + w1 + w2 + w3 + wb;
 
     float3 col = (uC0 * w0 + uC1 * w1 + uC2 * w2 + uC3 * w3 + uBase * wb) / sum;
@@ -211,9 +280,15 @@ half4 main(float2 fc) {
     float rim = 1.0 - smoothstep(0.0, m * 0.18, -sd);
     col = mix(col, float3(0.96, 0.94, 0.98), rim * 0.20);
 
-    float2 dh = fc - uTouch;
-    float hi = exp(-dot(dh, dh) / (m * m * 0.12));
-    col = col + float3(hi * (0.10 + 0.30 * uTouchAmt));
+    float2 dh = fc - uHi;
+    float hi = exp(-dot(dh, dh) / (m * m * 0.07));
+    col = col + float3(hi * (0.12 + 0.40 * uTouchAmt));
+
+    float rd = length(fc - uPress);
+    float rr = m * (0.10 + 1.15 * uRipple);
+    float rt = (rd - rr) / (m * 0.10);
+    float ring = exp(-rt * rt) * (1.0 - uRipple) * (1.0 - uRipple);
+    col = col + float3(ring * 0.30);
 
     float n = fract(sin(dot(fc, float2(12.9898, 78.233))) * 43758.5453);
     col = col + float3((n - 0.5) * 0.035);
@@ -227,8 +302,9 @@ half4 main(float2 fc) {
 private fun nowSeconds(nanos: Long): Float = (nanos % 1_000_000_000_000L) / 1_000_000_000f
 
 /**
- * بطاقة لوحة ألوان سائلة: أربع بقع ملوّنة تتحرك ببطء، وتتفاعل مع اللمس وسحب الإصبع كالسوائل
- * التي لا تمتزج. الضغطة القصيرة تختار اللوحة. على Android 13+ تُرسم بشيدر، وفي الأقدم بتدرجات شعاعية.
+ * بطاقة لوحة ألوان سائلة: أربع بقع ملوّنة تنساب في بعضها، وتتفاعل مع اللمس والإمساك والسحب
+ * (انجذاب وتنافر ودوران وتموّج ولمعة تتبع الإصبع وارتداد هلامي). الضغطة القصيرة تختار اللوحة.
+ * على Android 13+ تُرسم بشيدر، وفي الأقدم بتدرجات شعاعية.
  */
 @Composable
 internal fun FluidPaletteCard(
@@ -244,6 +320,7 @@ internal fun FluidPaletteCard(
 ) {
     val sim = remember { FluidSim() }
     val currentClick by rememberUpdatedState(onClick)
+    val haptic = LocalHapticFeedback.current
     var tick by remember { mutableIntStateOf(0) }
     val holder = remember {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) FluidShader() else null
@@ -264,6 +341,11 @@ internal fun FluidPaletteCard(
     val shape = RoundedCornerShape(24.dp)
     Box(
         modifier
+            .graphicsLayer {
+                val sc = if (tick >= 0) 1f - 0.035f * sim.touchAmt else 1f
+                scaleX = sc
+                scaleY = sc
+            }
             .aspectRatio(1.12f)
             .clip(shape)
             .drawBehind {
@@ -296,17 +378,15 @@ internal fun FluidPaletteCard(
             )
             .pointerInput(Unit) {
                 awaitEachGesture {
-                    val down = awaitFirstDown(requireUnconsumed = false)
+                    // نراقب الحدث في مرحلة Initial بلا استهلاك، فلا يقطعه تمرير الصفحة.
+                    val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
                     sim.press(down.position.x, down.position.y)
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                     var moved = false
                     while (true) {
-                        val event = awaitPointerEvent()
-                        val ch = event.changes.firstOrNull() ?: break
+                        val event = awaitPointerEvent(PointerEventPass.Initial)
+                        val ch = event.changes.firstOrNull { it.id == down.id } ?: break
                         if (!ch.pressed) break
-                        if (ch.isConsumed) {
-                            moved = true
-                            break
-                        }
                         val delta = ch.position - ch.previousPosition
                         sim.move(ch.position.x, ch.position.y, delta.x, delta.y)
                         if ((ch.position - down.position).getDistance() > viewConfiguration.touchSlop) {
