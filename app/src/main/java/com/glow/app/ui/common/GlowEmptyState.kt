@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -91,7 +92,7 @@ fun GlowEmptyState(
     val onSolid = if (skin.isDark) Ink else Color.White
 
     Column(
-        modifier.fillMaxSize().padding(start = 32.dp, end = 32.dp, bottom = 88.dp),
+        modifier.fillMaxSize().padding(start = 24.dp, end = 24.dp, bottom = 64.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -138,18 +139,19 @@ fun GlowEmptyState(
             fontSize = 22.sp,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth(),
         )
         Text(
             message,
             color = skin.textSecondary,
             fontSize = 15.sp,
             textAlign = TextAlign.Center,
-            modifier = Modifier.padding(top = 8.dp),
+            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
         )
         if (actionLabel != null && onAction != null) {
             Box(
                 Modifier
-                    .padding(top = 24.dp)
+                    .padding(top = 20.dp)
                     .height(52.dp)
                     .widthIn(min = 160.dp)
                     .clip(RoundedCornerShape(26.dp))

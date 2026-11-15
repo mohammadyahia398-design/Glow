@@ -162,7 +162,7 @@ fun LibraryScreen(
                 GlowSettingsButton(onOpenSettings, Modifier.padding(start = 4.dp, end = 8.dp))
             },
         )
-        if (searching) SearchField(query) { query = it }
+        if (searching) SearchField(query, { query = it }) { searching = false; query = "" }
 
 
         Box(
@@ -458,29 +458,39 @@ private fun NameDialog(onCreate: (String) -> Unit, onDismiss: () -> Unit) {
 }
 
 @Composable
-private fun SearchField(value: String, onChange: (String) -> Unit) {
+private fun SearchField(value: String, onChange: (String) -> Unit, onClose: () -> Unit) {
     val skin = LocalGlowSkin.current
     val focus = remember { FocusRequester() }
     LaunchedEffect(Unit) { focus.requestFocus() }
-    Box(
+    Row(
         Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp)
-            .clip(RoundedCornerShape(24.dp))
+            .padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 12.dp)
+            .height(52.dp)
+            .clip(RoundedCornerShape(26.dp))
             .background(skin.chip)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(start = 16.dp, end = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (value.isEmpty()) {
-            Text("ابحث في مكتبتك", color = skin.textSecondary, fontSize = 15.sp)
+        GlowIcon(IconKind.Search, skin.textSecondary, 20.dp)
+        Box(Modifier.weight(1f).padding(horizontal = 12.dp), contentAlignment = Alignment.CenterStart) {
+            if (value.isEmpty()) {
+                Text("ابحث في مكتبتك", color = skin.textSecondary, fontSize = 15.sp)
+            }
+            BasicTextField(
+                value = value,
+                onValueChange = onChange,
+                singleLine = true,
+                textStyle = TextStyle(color = skin.text, fontSize = 15.sp),
+                cursorBrush = SolidColor(skin.accentText),
+                modifier = Modifier.fillMaxWidth().focusRequester(focus),
+            )
         }
-        BasicTextField(
-            value = value,
-            onValueChange = onChange,
-            singleLine = true,
-            textStyle = TextStyle(color = skin.text, fontSize = 15.sp),
-            cursorBrush = SolidColor(skin.accentText),
-            modifier = Modifier.fillMaxWidth().focusRequester(focus),
-        )
+        GlowIconTap(if (value.isEmpty()) "إغلاق البحث" else "مسح", {
+            if (value.isEmpty()) onClose() else onChange("")
+        }, size = 44.dp) {
+            Text("✕", color = skin.textSecondary, fontSize = 16.sp, modifier = Modifier.align(Alignment.Center))
+        }
     }
 }
 
