@@ -516,7 +516,7 @@ private fun BackgroundPicker(store: SettingsStore) {
     }
 }
 
-/** معاينة لون وثلاثة منزلقات: الصبغة والتشبّع والسطوع. */
+/** معاينة لون وثلاثة منزلقات زجاجية: الصبغة والتشبّع والسطوع. */
 @Composable
 private fun HsvPicker(color: Color, onChange: (Color) -> Unit) {
     val skin = LocalGlowSkin.current
@@ -524,36 +524,42 @@ private fun HsvPicker(color: Color, onChange: (Color) -> Unit) {
     var h by remember { mutableFloatStateOf(initial[0]) }
     var s by remember { mutableFloatStateOf(initial[1]) }
     var v by remember { mutableFloatStateOf(initial[2]) }
-    val sliderColors = SliderDefaults.colors(
-        thumbColor = skin.accent,
-        activeTrackColor = skin.accent,
-        inactiveTrackColor = skin.chip,
-    )
-    Column(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 8.dp)) {
+    val rainbow = remember { (0..6).map { hsvColor(it * 60f, 1f, 1f) } }
+    Column(
+        Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
         Box(
             Modifier
                 .fillMaxWidth()
-                .height(28.dp)
-                .clip(RoundedCornerShape(14.dp))
-                .background(color),
+                .height(44.dp)
+                .clip(RoundedCornerShape(22.dp))
+                .background(color)
+                .border(1.5.dp, Color.White.copy(alpha = 0.35f), RoundedCornerShape(22.dp)),
         )
-        Slider(
-            value = h,
-            onValueChange = { h = it; onChange(hsvColor(h, s, v)) },
-            valueRange = 0f..360f,
-            colors = sliderColors,
+        GlowGlassSlider(
+            label = "الصبغة",
+            valueText = "${h.toInt()}°",
+            value = h / 360f,
+            onValueChange = { h = it * 360f; onChange(hsvColor(h, s, v)) },
+            fillColors = rainbow,
+            rimColor = skin.accent,
         )
-        Slider(
+        GlowGlassSlider(
+            label = "التشبّع",
+            valueText = "${(s * 100).toInt()}%",
             value = s,
             onValueChange = { s = it; onChange(hsvColor(h, s, v)) },
-            valueRange = 0f..1f,
-            colors = sliderColors,
+            fillColors = listOf(hsvColor(h, 0f, v), hsvColor(h, 1f, v)),
+            rimColor = skin.accent,
         )
-        Slider(
+        GlowGlassSlider(
+            label = "السطوع",
+            valueText = "${(v * 100).toInt()}%",
             value = v,
             onValueChange = { v = it; onChange(hsvColor(h, s, v)) },
-            valueRange = 0f..1f,
-            colors = sliderColors,
+            fillColors = listOf(Color.Black, hsvColor(h, s, 1f)),
+            rimColor = skin.accent,
         )
     }
 }
