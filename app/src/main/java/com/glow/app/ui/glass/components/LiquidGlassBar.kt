@@ -126,6 +126,8 @@ data class LiquidBarSpec(
     val iconSize: Dp = 26.dp,
     val labelSize: TextUnit = 12.sp,
     val barStyle: GlassStyle = GlassStyle.Regular.copy(
+        blurRadius = 6.dp,
+        refractionStrength = 1.0f,
         tintAlpha = 0.06f,
         fallbackTintAlpha = 0.30f,
         borderAlpha = 0.32f,

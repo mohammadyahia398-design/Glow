@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.windowInsetsBottomHeight
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -73,12 +74,6 @@ import kotlin.random.Random
 /** ارتفاع الشريط السفلي مع هوامشه؛ يُرفَع به المشغّل المصغّر فوقه. */
 private val BarLift = 84.dp
 
-/** ارتفاع المشغّل المصغّر والفراغ تحته (يطابق [ArtMiniPlayer] وهوامشه أدناه). */
-private val MiniHeight = ArtMiniPlayerHeight
-private val MiniGap = 12.dp
-
-/** طول التلاشي فوق أعلى عنصر سفلي (مشغّل أو شريط). */
-private val ScrimFade = 36.dp
 
 private val idleState = MutableStateFlow(PlayerState())
 private val idleSleep = MutableStateFlow<Long?>(null)
@@ -223,9 +218,10 @@ fun GlowApp(settings: SettingsStore, modifier: Modifier = Modifier) {
                         },
                     )
                 }
-                // داخل المصدر: فتُلتقط الخلفية المشتركة وقد تلاشت الصفوف قبل المشغّل والشريط.
-                BottomScrim(skin.bgBottom, barVisible, miniVisible)
             }
+
+            // تلاشٍ خفيف عند الحافة السفلية: خارج المصدر، فلا يلتقطه الزجاج وتبقى القائمة تنكسر خلف الشريط.
+            BottomFade(skin.bgBottom, barVisible)
 
             val miniLift by animateDpAsState(if (barVisible) BarLift else 0.dp, label = "miniLift")
 
@@ -285,34 +281,24 @@ fun GlowApp(settings: SettingsStore, modifier: Modifier = Modifier) {
 }
 
 /**
- * طبقة بلون الخلفية أسفل الشاشة: تغطي منطقة المشغّل المصغّر والشريط وشريط التنقل،
- * مع تلاشٍ ناعم فوقها، فلا تظهر الصفوف ولا الأغلفة خلفهما أو بينهما.
- * تُرسم داخل مصدر الخلفية الزجاجية فيلتقطها الزجاج ولا يرى الصفوف.
+ * تلاشٍ ناعم بلون الخلفية عند أسفل الشاشة يحسّن وضوح حافة الشريط.
+ * يُرسم خارج مصدر الخلفية الزجاجية عمداً: الزجاج يلتقط القائمة كما هي
+ * فتظهر صفوفها وأغلفتها منكسرة عبر الشريط، بدل لون مسطح.
  */
 @Composable
-private fun BoxScope.BottomScrim(color: Color, barVisible: Boolean, miniVisible: Boolean) {
-    val solidTarget = when {
-        barVisible && miniVisible -> BarLift + MiniGap + MiniHeight
-        barVisible -> BarLift
-        miniVisible -> MiniGap + MiniHeight
-        else -> 0.dp
-    }
-    val solid by animateDpAsState(solidTarget, label = "scrimSolid")
-    if (solid <= 0.dp) return
-    val fade = minOf(solid, ScrimFade)
-    Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth()) {
+private fun BoxScope.BottomFade(color: Color, visible: Boolean) {
+    val navHeight = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    AnimatedVisibility(
+        visible = visible,
+        modifier = Modifier.align(Alignment.BottomCenter),
+        enter = fadeIn(),
+        exit = fadeOut(),
+    ) {
         Box(
             Modifier
                 .fillMaxWidth()
-                .height(fade)
-                .background(Brush.verticalGradient(listOf(color.copy(alpha = 0f), color))),
-        )
-        Box(Modifier.fillMaxWidth().height(solid).background(color))
-        Spacer(
-            Modifier
-                .fillMaxWidth()
-                .windowInsetsBottomHeight(WindowInsets.navigationBars)
-                .background(color),
+                .height(BarLift + navHeight)
+                .background(Brush.verticalGradient(listOf(color.copy(alpha = 0f), color.copy(alpha = 0.85f)))),
         )
     }
 }
