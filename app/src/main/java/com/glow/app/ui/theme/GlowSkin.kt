@@ -34,6 +34,10 @@ data class GlowSkin(
     val glassTint: Color,
     val glassBase: Color,
     val glassBorder: Color,
+    /** حاوية التمييز (primaryContainer) والمحتوى فوقها وحدّ المخطّطات. */
+    val containerColor: Color = Color(0xFF12303D),
+    val onContainerColor: Color = Color(0xFF67E8F9),
+    val outlineVariantColor: Color = Color(0xFF1E4352),
 )
 
 object GlowSkins {
@@ -81,6 +85,9 @@ object GlowSkins {
         glassTint = Color.White,
         glassBase = Frost,
         glassBorder = Teal,
+        containerColor = Color(0xFF67E8F9),
+        onContainerColor = Color(0xFF07141C),
+        outlineVariantColor = Color(0xFFA5E6F0),
     )
 }
 

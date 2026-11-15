@@ -21,9 +21,9 @@ private fun glowColorScheme(skin: GlowSkin): ColorScheme =
         darkColorScheme(
             primary = skin.accent,
             onPrimary = skin.onAccent,
-            primaryContainer = Color(0xFF12303D),
-            onPrimaryContainer = Color(0xFF67E8F9),
-            secondary = Color(0xFF67E8F9),
+            primaryContainer = skin.containerColor,
+            onPrimaryContainer = skin.onContainerColor,
+            secondary = skin.accentText,
             onSecondary = skin.onAccent,
             background = skin.bgTop,
             onBackground = skin.text,
@@ -33,14 +33,14 @@ private fun glowColorScheme(skin: GlowSkin): ColorScheme =
             onSurfaceVariant = skin.textSecondary,
             surfaceTint = skin.accent,
             outline = skin.textSecondary,
-            outlineVariant = Color(0xFF1E4352),
+            outlineVariant = skin.outlineVariantColor,
         )
     } else {
         lightColorScheme(
             primary = skin.accent,
             onPrimary = skin.onAccent,
-            primaryContainer = Color(0xFF67E8F9),
-            onPrimaryContainer = Color(0xFF07141C),
+            primaryContainer = skin.containerColor,
+            onPrimaryContainer = skin.onContainerColor,
             secondary = skin.accentText,
             onSecondary = Color.White,
             background = skin.bgTop,
@@ -51,7 +51,7 @@ private fun glowColorScheme(skin: GlowSkin): ColorScheme =
             onSurfaceVariant = skin.textSecondary,
             surfaceTint = skin.accent,
             outline = skin.textSecondary,
-            outlineVariant = Color(0xFFA5E6F0),
+            outlineVariant = skin.outlineVariantColor,
         )
     }
 
@@ -68,17 +68,18 @@ object GlowTheme {
 @Composable
 fun GlowTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
+    customSkin: GlowSkin? = null,
     content: @Composable () -> Unit,
 ) {
-    val skin = if (darkTheme) GlowSkins.Dark else GlowSkins.Light
+    val skin = customSkin ?: if (darkTheme) GlowSkins.Dark else GlowSkins.Light
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
             val window = view.context.findActivity()?.window ?: return@SideEffect
             val controller = WindowCompat.getInsetsController(window, view)
             // خلفية فاتحة ← أيقونات داكنة في شريط الحالة وشريط التنقل، والعكس
-            controller.isAppearanceLightStatusBars = !darkTheme
-            controller.isAppearanceLightNavigationBars = !darkTheme
+            controller.isAppearanceLightStatusBars = !skin.isDark
+            controller.isAppearanceLightNavigationBars = !skin.isDark
         }
     }
 

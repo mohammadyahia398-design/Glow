@@ -4,8 +4,13 @@ import android.content.Context
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 
 enum class ThemeMode { AUTO, LIGHT, DARK }
+
+/** مصدر لون الخلفية: من اللوحة، أو أسود، أو أبيض، أو لون يختاره المستخدم. */
+enum class BgChoice { PALETTE, BLACK, WHITE, CUSTOM }
 
 /** إعدادات التطبيق المحفوظة في SharedPreferences، وتُقرأ كحالة Compose. */
 class SettingsStore(context: Context) {
@@ -25,6 +30,40 @@ class SettingsStore(context: Context) {
 
     var skipShortSeconds by mutableStateOf(prefs.getInt("skip_short_sec", 30))
         private set
+
+    var paletteId by mutableStateOf(prefs.getString("palette_id", "glow") ?: "glow")
+        private set
+
+    var bgChoice by mutableStateOf(
+        BgChoice.values().getOrElse(prefs.getInt("bg_choice", 0)) { BgChoice.PALETTE },
+    )
+        private set
+
+    var customAccent by mutableStateOf(Color(prefs.getInt("custom_accent", 0xFFFF5A57.toInt())))
+        private set
+
+    var customBg by mutableStateOf(Color(prefs.getInt("custom_bg", 0xFF050C38.toInt())))
+        private set
+
+    fun updatePalette(v: String) {
+        paletteId = v
+        prefs.edit().putString("palette_id", v).apply()
+    }
+
+    fun updateBgChoice(v: BgChoice) {
+        bgChoice = v
+        prefs.edit().putInt("bg_choice", v.ordinal).apply()
+    }
+
+    fun updateCustomAccent(v: Color) {
+        customAccent = v
+        prefs.edit().putInt("custom_accent", v.toArgb()).apply()
+    }
+
+    fun updateCustomBg(v: Color) {
+        customBg = v
+        prefs.edit().putInt("custom_bg", v.toArgb()).apply()
+    }
 
     fun updateThemeMode(v: ThemeMode) {
         themeMode = v

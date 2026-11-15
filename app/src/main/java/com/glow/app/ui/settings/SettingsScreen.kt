@@ -25,12 +25,15 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -47,13 +50,17 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.glow.app.settings.BgChoice
 import com.glow.app.settings.SettingsStore
 import com.glow.app.settings.ThemeMode
 import com.glow.app.ui.common.GlowChoiceDialog
 import com.glow.app.ui.common.GlowIcon
 import com.glow.app.ui.common.IconKind
 import com.glow.app.ui.common.GlowTopBar
+import com.glow.app.ui.theme.Colorways
 import com.glow.app.ui.theme.LocalGlowSkin
+import com.glow.app.ui.theme.colorToHsv
+import com.glow.app.ui.theme.hsvColor
 import kotlinx.coroutines.delay
 
 private enum class Dlg { SPEED, SLEEP, SHORT }
@@ -100,6 +107,11 @@ fun SettingsScreen(
 
         Section("المظهر") {
             AppearancePicker(store.themeMode) { store.updateThemeMode(it) }
+        }
+
+        Section("الألوان") {
+            ColorwayGrid(store)
+            BackgroundPicker(store)
         }
 
         Section("التشغيل") {
@@ -397,4 +409,151 @@ private fun DrawScope.paintPhone(dark: Boolean) {
         size = Size(w * .76f, h * .5f),
         cornerRadius = CornerRadius(h * .08f),
     )
+}
+
+/** شبكة بطاقات اللوحات السائلة (عمودان) مع بطاقة «مخصّص» في آخرها. */
+@Composable
+private fun ColorwayGrid(store: SettingsStore) {
+    val skin = LocalGlowSkin.current
+    val all = Colorways.Presets + Colorways.custom(store.customAccent, store.customBg)
+    Column(Modifier.fillMaxWidth().padding(vertical = 10.dp)) {
+        all.chunked(2).forEach { row ->
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                row.forEach { cw ->
+                    FluidPaletteCard(
+                        colors = cw.blobs,
+                        base = cw.bg,
+                        label = cw.name,
+                        selected = store.paletteId == cw.id,
+                        borderColor = skin.accent,
+                        badgeBg = skin.accent,
+                        badgeFg = skin.onAccent,
+                        onClick = { store.updatePalette(cw.id) },
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+                if (row.size == 1) Spacer(Modifier.weight(1f))
+            }
+        }
+        if (store.paletteId == Colorways.CUSTOM_ID) {
+            Text(
+                "لون التمييز",
+                color = skin.textSecondary,
+                fontSize = 14.sp,
+                modifier = Modifier.padding(start = 18.dp, end = 18.dp, top = 12.dp),
+            )
+            HsvPicker(store.customAccent) { store.updateCustomAccent(it) }
+        }
+    }
+}
+
+/** اختيار الخلفية: من اللوحة أو أسود أو أبيض أو لون مخصّص. */
+@Composable
+private fun BackgroundPicker(store: SettingsStore) {
+    val skin = LocalGlowSkin.current
+    val options = listOf(
+        BgChoice.PALETTE to "اللوحة",
+        BgChoice.BLACK to "أسود",
+        BgChoice.WHITE to "أبيض",
+        BgChoice.CUSTOM to "مخصّص",
+    )
+    Column(Modifier.fillMaxWidth().padding(bottom = 14.dp)) {
+        Text(
+            "الخلفية",
+            color = skin.text,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(start = 18.dp, end = 18.dp, top = 6.dp, bottom = 10.dp),
+        )
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            options.forEach { (choice, label) ->
+                val on = store.bgChoice == choice
+                Box(
+                    Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(if (on) skin.accent else skin.chip)
+                        .clickable { store.updateBgChoice(choice) }
+                        .padding(vertical = 12.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        label,
+                        color = if (on) skin.onAccent else skin.text,
+                        fontSize = 14.sp,
+                        fontWeight = if (on) FontWeight.SemiBold else FontWeight.Normal,
+                    )
+                }
+            }
+        }
+        if (store.bgChoice == BgChoice.CUSTOM) {
+            Text(
+                "لون الخلفية",
+                color = skin.textSecondary,
+                fontSize = 14.sp,
+                modifier = Modifier.padding(start = 18.dp, end = 18.dp, top = 14.dp),
+            )
+            HsvPicker(store.customBg) { store.updateCustomBg(it) }
+        }
+        if (!(store.paletteId == Colorways.Glow.id && store.bgChoice == BgChoice.PALETTE)) {
+            Text(
+                "خيار «المظهر» أعلاه يعمل مع لوحة «سماوي» فقط؛ الخلفية هنا تحدد الفاتح والداكن.",
+                color = skin.textSecondary,
+                fontSize = 12.sp,
+                modifier = Modifier.padding(start = 18.dp, end = 18.dp, top = 12.dp),
+            )
+        }
+    }
+}
+
+/** معاينة لون وثلاثة منزلقات: الصبغة والتشبّع والسطوع. */
+@Composable
+private fun HsvPicker(color: Color, onChange: (Color) -> Unit) {
+    val skin = LocalGlowSkin.current
+    val initial = remember { colorToHsv(color) }
+    var h by remember { mutableFloatStateOf(initial[0]) }
+    var s by remember { mutableFloatStateOf(initial[1]) }
+    var v by remember { mutableFloatStateOf(initial[2]) }
+    val sliderColors = SliderDefaults.colors(
+        thumbColor = skin.accent,
+        activeTrackColor = skin.accent,
+        inactiveTrackColor = skin.chip,
+    )
+    Column(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 8.dp)) {
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .height(28.dp)
+                .clip(RoundedCornerShape(14.dp))
+                .background(color),
+        )
+        Slider(
+            value = h,
+            onValueChange = { h = it; onChange(hsvColor(h, s, v)) },
+            valueRange = 0f..360f,
+            colors = sliderColors,
+        )
+        Slider(
+            value = s,
+            onValueChange = { s = it; onChange(hsvColor(h, s, v)) },
+            valueRange = 0f..1f,
+            colors = sliderColors,
+        )
+        Slider(
+            value = v,
+            onValueChange = { v = it; onChange(hsvColor(h, s, v)) },
+            valueRange = 0f..1f,
+            colors = sliderColors,
+        )
+    }
 }

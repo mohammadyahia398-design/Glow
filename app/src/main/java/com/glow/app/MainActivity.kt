@@ -18,6 +18,7 @@ import com.glow.app.settings.ThemeMode
 import com.glow.app.ui.navigation.GlowApp
 import com.glow.app.ui.splash.GlowSplash
 import com.glow.app.ui.theme.GlowTheme
+import com.glow.app.ui.theme.resolveSkin
 
 /** نقطة الدخول: تعرض التطبيق الحقيقي (المكتبة والألبوم والمشغّل) تحت شاشة البداية المتحركة. */
 class MainActivity : ComponentActivity() {
@@ -35,7 +36,14 @@ class MainActivity : ComponentActivity() {
                 ThemeMode.LIGHT -> false
                 ThemeMode.DARK -> true
             }
-            GlowTheme(darkTheme = dark) {
+            val skin = resolveSkin(
+                paletteId = settings.paletteId,
+                bgChoice = settings.bgChoice,
+                customAccent = settings.customAccent,
+                customBg = settings.customBg,
+                darkTheme = dark,
+            )
+            GlowTheme(darkTheme = skin.isDark, customSkin = skin) {
                 var showSplash by rememberSaveable { mutableStateOf(true) }
                 Box(Modifier.fillMaxSize()) {
                     GlowApp(settings, Modifier.fillMaxSize())
