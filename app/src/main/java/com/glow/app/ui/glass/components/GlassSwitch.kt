@@ -39,6 +39,7 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.pointer.pointerInput
@@ -78,19 +79,32 @@ object GlassSwitchSpec {
     /** عرض المحتوى الحقيقي الذي تلتقطه العدسة خارج حدّها لتنكسر به حافتها. */
     val Bleed = 12.dp
 
-    /** عرض منطقة الحافة المنحنية التي يحدث فيها الانكسار. */
-    val Bezel = 8.dp
+    /**
+     * العدسة وهي ساكنة شبه مسطّحة: حافة ضيقة، وسماكة صغيرة، فانكسار خفيف جداً.
+     * عند الضغط أو السحب «ترتفع»: تتسع الحافة وتزداد السماكة فيقوى الانكسار.
+     */
+    val BezelRest = 5.dp
+    val BezelLift = 9.dp
+    val ThicknessRest = 3.dp
+    val ThicknessLift = 14.dp
 
-    /** سماكة الزجاج؛ تحدد شدّة الانكسار عند الحافة. */
-    val Thickness = 12.dp
+    /** نموّ العدسة عند الارتفاع (لكل جهة). */
+    val LiftGrowX = 3.dp
+    val LiftGrowY = 2.dp
 
-    /** نموّ العدسة عند اللمس (لكل جهة). */
-    val PressGrowX = 3.dp
-    val PressGrowY = 2.dp
+    /** الظل: قريب وناعم ساكناً، وأبعد وأوسع عند الارتفاع. */
+    val ShadowDyRest = 1.dp
+    val ShadowDyLift = 4.5.dp
+    val ShadowDxLift = 1.5.dp
+    val ShadowStepRest = 0.6.dp
+    val ShadowStepLift = 1.7.dp
 
     const val RefractiveIndex = 1.5f
-    const val Dispersion = 0.04f
+    const val DispersionRest = 0.01f
+    const val DispersionLift = 0.05f
 }
+
+private fun mixF(a: Float, b: Float, t: Float): Float = a + (b - a) * t
 
 /**
  * مفتاح تبديل زجاجي: مسار ملوّن وعدسة زجاجية تنزلق عليه وتنكسر عند حافتها الصورة التي تحتها.
@@ -122,13 +136,19 @@ fun GlassSwitch(
     val overhangPx = with(density) { s.Overhang.toPx() }
     val padPx = with(density) { s.VerticalPad.toPx() }
     val bleedPx = with(density) { s.Bleed.toPx() }
-    val bezelPx = with(density) { s.Bezel.toPx() }
-    val thickPx = with(density) { s.Thickness.toPx() }
-    val growXPx = with(density) { s.PressGrowX.toPx() }
-    val growYPx = with(density) { s.PressGrowY.toPx() }
+    val bezelRestPx = with(density) { s.BezelRest.toPx() }
+    val bezelLiftPx = with(density) { s.BezelLift.toPx() }
+    val thickRestPx = with(density) { s.ThicknessRest.toPx() }
+    val thickLiftPx = with(density) { s.ThicknessLift.toPx() }
+    val growXPx = with(density) { s.LiftGrowX.toPx() }
+    val growYPx = with(density) { s.LiftGrowY.toPx() }
     val rimPx = with(density) { 1.dp.toPx() }
-    val shadowDy = with(density) { 2.5.dp.toPx() }
-    val shadowStep = with(density) { 1.1.dp.toPx() }
+    val innerRimInsetPx = with(density) { 2.dp.toPx() }
+    val shadowDyRest = with(density) { s.ShadowDyRest.toPx() }
+    val shadowDyLift = with(density) { s.ShadowDyLift.toPx() }
+    val shadowDxLift = with(density) { s.ShadowDxLift.toPx() }
+    val shadowStepRest = with(density) { s.ShadowStepRest.toPx() }
+    val shadowStepLift = with(density) { s.ShadowStepLift.toPx() }
 
     val totalW = s.TrackWidth + s.Overhang * 2
     val totalH = s.ThumbHeight + s.VerticalPad * 2
@@ -155,7 +175,7 @@ fun GlassSwitch(
     }
 
     val pressTarget = if (dragging || tapping) 1f else 0f
-    val press by animateFloatAsState(pressTarget, pressSpec, label = "glassSwitchPress")
+    val press by animateFloatAsState(pressTarget, pressSpec, label = "glassSwitchLift")
 
     val effectHolder = remember {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) SwitchLensHolder() else null
@@ -237,24 +257,30 @@ fun GlassSwitch(
                         size = Size(trackWpx, trackHpx),
                         cornerRadius = CornerRadius(trackHpx / 2f),
                     )
-                    val left = thumbLeft()
+                    val lift = press
+                    val lc = lift.coerceIn(0f, 1f)
+                    val gx = growXPx * lift
+                    val gy = growYPx * lift
+                    val left = thumbLeft() - gx
+                    val top = padPx - gy
+                    val w = thumbWpx + 2f * gx
+                    val h = thumbHpx + 2f * gy
                     val thumbPath = Path().apply {
-                        addRoundRect(
-                            RoundRect(
-                                left, padPx, left + thumbWpx, padPx + thumbHpx,
-                                CornerRadius(thumbHpx / 2f),
-                            ),
-                        )
+                        addRoundRect(RoundRect(left, top, left + w, top + h, CornerRadius(h / 2f)))
                     }
+                    val dy = mixF(shadowDyRest, shadowDyLift, lift)
+                    val dx = shadowDxLift * lc
+                    val step = mixF(shadowStepRest, shadowStepLift, lift)
+                    val a = mixF(0.025f, 0.05f, lc)
                     // الظل خارج العدسة فقط، فيبقى داخلها شفافاً.
                     clipPath(thumbPath, ClipOp.Difference) {
-                        for (i in 1..5) {
-                            val e = i * shadowStep
+                        for (i in 1..6) {
+                            val e = i * step
                             drawRoundRect(
-                                color = Color.Black.copy(alpha = 0.045f),
-                                topLeft = Offset(left - e, padPx + shadowDy - e),
-                                size = Size(thumbWpx + 2f * e, thumbHpx + 2f * e),
-                                cornerRadius = CornerRadius(thumbHpx / 2f + e),
+                                color = Color.Black.copy(alpha = a),
+                                topLeft = Offset(left + dx - e, top + dy - e),
+                                size = Size(w + 2f * e, h + 2f * e),
+                                cornerRadius = CornerRadius(h / 2f + e),
                             )
                         }
                     }
@@ -270,6 +296,7 @@ fun GlassSwitch(
                 .size(layerW, layerH)
                 .graphicsLayer {
                     val p = press
+                    val pc = p.coerceIn(0f, 1f)
                     val hw = thumbWpx / 2f + growXPx * p
                     val hh = thumbHpx / 2f + growYPx * p
                     val cx = size.width / 2f
@@ -284,10 +311,10 @@ fun GlassSwitch(
                                 halfW = hw,
                                 halfH = hh,
                                 corner = hh,
-                                bezel = bezelPx,
-                                thick = thickPx * (1f + 0.25f * p),
+                                bezel = mixF(bezelRestPx, bezelLiftPx, p).coerceAtLeast(1f),
+                                thick = mixF(thickRestPx, thickLiftPx, p).coerceAtLeast(0f),
                                 index = s.RefractiveIndex,
-                                dispersion = s.Dispersion,
+                                dispersion = mixF(s.DispersionRest, s.DispersionLift, pc),
                             )
                         } else {
                             null
@@ -314,21 +341,26 @@ fun GlassSwitch(
                 .size(layerW, layerH)
                 .drawBehind {
                     val p = press
+                    val lc = p.coerceIn(0f, 1f)
                     val hw = thumbWpx / 2f + growXPx * p
                     val hh = thumbHpx / 2f + growYPx * p
                     val tl = Offset(size.width / 2f - hw, size.height / 2f - hh)
                     val sz = Size(hw * 2f, hh * 2f)
                     val corner = CornerRadius(hh)
 
+                    // جسم الزجاج: خفيف جداً ساكناً، وأوضح عند الارتفاع.
                     drawRoundRect(
-                        color = rimColor.copy(alpha = 0.10f + 0.06f * p),
+                        color = rimColor.copy(alpha = mixF(0.05f, 0.11f, lc)),
                         topLeft = tl,
                         size = sz,
                         cornerRadius = corner,
                     )
                     drawRoundRect(
                         brush = Brush.verticalGradient(
-                            colors = listOf(rimColor.copy(alpha = 0.26f), Color.Transparent),
+                            colors = listOf(
+                                rimColor.copy(alpha = mixF(0.10f, 0.24f, lc)),
+                                Color.Transparent,
+                            ),
                             startY = tl.y,
                             endY = tl.y + hh,
                         ),
@@ -336,12 +368,15 @@ fun GlassSwitch(
                         size = sz,
                         cornerRadius = corner,
                     )
+
+                    // الحافة الخارجية: رفيعة ولامعة من الأعلى، وتقوى عند الارتفاع.
+                    val k = mixF(0.55f, 1f, lc)
                     drawRoundRect(
                         brush = Brush.linearGradient(
                             colors = listOf(
-                                rimColor.copy(alpha = 0.95f),
-                                rimColor.copy(alpha = 0.30f),
-                                rimColor.copy(alpha = 0.60f),
+                                rimColor.copy(alpha = 0.95f * k),
+                                rimColor.copy(alpha = 0.30f * k),
+                                rimColor.copy(alpha = 0.60f * k),
                             ),
                             start = tl,
                             end = Offset(tl.x + sz.width, tl.y + sz.height),
@@ -351,6 +386,61 @@ fun GlassSwitch(
                         cornerRadius = CornerRadius(hh - rimPx / 2f),
                         style = Stroke(width = rimPx),
                     )
+
+                    // عند الارتفاع فقط: الحافة الداخلية (جدار الزجاج) واللمعة الهلالية.
+                    if (lc > 0.01f) {
+                        val inset = innerRimInsetPx
+                        val inTl = Offset(tl.x + inset, tl.y + inset)
+                        val inSz = Size(sz.width - 2f * inset, sz.height - 2f * inset)
+                        val inCorner = CornerRadius((hh - inset).coerceAtLeast(0f))
+                        val fade = Brush.horizontalGradient(
+                            colors = listOf(
+                                Color.Transparent,
+                                rimColor.copy(alpha = 0.70f * lc),
+                                Color.Transparent,
+                            ),
+                            startX = tl.x,
+                            endX = tl.x + sz.width,
+                        )
+                        // هلال علوي (أوضح) .
+                        clipRect(
+                            left = tl.x,
+                            top = tl.y,
+                            right = tl.x + sz.width,
+                            bottom = tl.y + hh * 0.9f,
+                        ) {
+                            drawRoundRect(
+                                brush = fade,
+                                topLeft = inTl,
+                                size = inSz,
+                                cornerRadius = inCorner,
+                                style = Stroke(width = rimPx * 1.6f),
+                            )
+                        }
+                        // خط سفلي رفيع أخف.
+                        clipRect(
+                            left = tl.x,
+                            top = tl.y + hh * 1.15f,
+                            right = tl.x + sz.width,
+                            bottom = tl.y + sz.height,
+                        ) {
+                            drawRoundRect(
+                                brush = Brush.horizontalGradient(
+                                    colors = listOf(
+                                        Color.Transparent,
+                                        rimColor.copy(alpha = 0.38f * lc),
+                                        Color.Transparent,
+                                    ),
+                                    startX = tl.x,
+                                    endX = tl.x + sz.width,
+                                ),
+                                topLeft = Offset(tl.x + inset * 0.6f, tl.y + inset * 0.6f),
+                                size = Size(sz.width - 1.2f * inset, sz.height - 1.2f * inset),
+                                cornerRadius = CornerRadius((hh - inset * 0.6f).coerceAtLeast(0f)),
+                                style = Stroke(width = rimPx),
+                            )
+                        }
+                    }
                 },
         )
     }
