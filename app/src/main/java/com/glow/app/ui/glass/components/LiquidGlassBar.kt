@@ -139,12 +139,12 @@ data class LiquidBarSpec(
     val springStiffness: Float = 380f,
     val pressDamping: Float = 0.60f,
     val pressStiffness: Float = 300f,
-    val magnify: Float = 1.22f,
+    val magnify: Float = 1.0f,
     val bleed: Dp = 48.dp,
-    val bezel: Dp = 26.dp,
-    val thickness: Dp = 48.dp,
+    val bezel: Dp = 10.dp,
+    val thickness: Dp = 16.dp,
     val refractiveIndex: Float = 1.6f,
-    val dispersion: Float = 0.20f,
+    val dispersion: Float = 0.06f,
 )
 
 /**
@@ -643,7 +643,7 @@ private class LensEffectHolder {
         shader.setFloatUniform("uThick", thick)
         shader.setFloatUniform("uIndex", index)
         shader.setFloatUniform("uDisp", dispersion)
-        shader.setFloatUniform("uRefl", bezel * 0.38f)
+        shader.setFloatUniform("uRefl", bezel * 0.15f)
         shader.setFloatUniform("uLit", press)
         return AndroidRenderEffect.createRuntimeShaderEffect(shader, "content").asComposeRenderEffect()
     }
