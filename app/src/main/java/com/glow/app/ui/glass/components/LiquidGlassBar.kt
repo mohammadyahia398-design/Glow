@@ -114,7 +114,7 @@ import kotlin.math.roundToInt
  * @property bezel عرض منطقة الحافة المنحنية التي يحدث فيها الانكسار.
  * @property thickness سماكة الزجاج؛ تحدد شدّة الانكسار عند الحافة.
  * @property refractiveIndex معامل الانكسار (الزجاج ≈ 1.5).
- * @property dispersion تشتّت لوني خفيف جداً عند الحافة (0 يعطّله).
+ * @property dispersion شدّة الهالة النيلية عند الحافة (0 يعطّلها).
  */
 @Immutable
 data class LiquidBarSpec(
@@ -144,7 +144,7 @@ data class LiquidBarSpec(
     val bezel: Dp = 10.dp,
     val thickness: Dp = 16.dp,
     val refractiveIndex: Float = 1.6f,
-    val dispersion: Float = 0.06f,
+    val dispersion: Float = 0.40f,
 )
 
 /**
@@ -562,34 +562,21 @@ private fun DrawScope.drawLensRim(
     val p = press.coerceIn(0f, 1f)
     val tl = Offset(left, top)
 
-    // جسم زجاجي أفتح من الشريط وظل داخلي ناعم والعدسة ساكنة: يميّزها أي ناظر فوراً.
-    // يزولان عند اللمس لتظهر الألوان المنكسرة تحتها.
+    // جسم زجاجي خفيف جداً والعدسة ساكنة (بلا ظل): يكفي لتمييزها، ويزول عند اللمس لتظهر الألوان المنكسرة.
     val rest = 1f - p
     if (rest > 0.01f) {
         drawRoundRect(
-            color = Color.White.copy(alpha = 0.16f * rest),
+            color = Color.White.copy(alpha = 0.10f * rest),
             topLeft = tl,
             size = Size(width, height),
             cornerRadius = CornerRadius(height / 2f),
         )
-        val steps = 5
-        val step = 1.3.dp.toPx()
-        for (i in 0 until steps) {
-            val inset = step * i + step / 2f
-            drawRoundRect(
-                color = Color.Black.copy(alpha = 0.12f * rest * (1f - i / steps.toFloat())),
-                topLeft = tl + Offset(inset, inset),
-                size = Size(width - 2f * inset, height - 2f * inset),
-                cornerRadius = CornerRadius(((height - 2f * inset) / 2f).coerceAtLeast(0f)),
-                style = Stroke(width = step),
-            )
-        }
     }
 
     // خط داكن رفيع خارج الحافة: يفصل العدسة عمّا تحتها بحدّ واضح.
     val hair = 1.dp.toPx()
     drawRoundRect(
-        color = Color.Black.copy(alpha = 0.12f + 0.14f * p),
+        color = Color.Black.copy(alpha = 0.08f + 0.12f * p),
         topLeft = tl - Offset(hair / 2f, hair / 2f),
         size = Size(width + hair, height + hair),
         cornerRadius = CornerRadius((height + hair) / 2f),
@@ -706,10 +693,12 @@ half4 main(float2 fragCoord) {
     float shiftLen = uThick * h * tan(thetaI - thetaT);
     float2 shift = outward * shiftLen;
 
-    half4 cr = content.eval(clampCoord(fragCoord + shift * (1.0 + uDisp)));
     half4 cg = content.eval(clampCoord(fragCoord + shift));
-    half4 cb = content.eval(clampCoord(fragCoord + shift * (1.0 - uDisp)));
-    half4 refr = half4(cr.r, cg.g, cb.b, cg.a);
+    half4 cf = content.eval(clampCoord(fragCoord + shift * (1.0 + uDisp)));
+    // هالة نيلية بدل تفريق الأحمر والأزرق: تظهر فقط حيث يختلف المحتوى المنكسر، وتخفت نحو الداخل.
+    float fringe = clamp(distance(float3(cf.rgb), float3(cg.rgb)) * 2.0, 0.0, 1.0) * (1.0 - t);
+    half4 refr = cg;
+    refr.rgb = mix(refr.rgb, half3(0.31, 0.27, 0.90) * refr.a, half(fringe * 0.6));
 
     // انعكاس داخلي عند أطراف الحافة: يظهر محتوى الداخل مقلوباً في حلقة رفيعة كالزجاج الحقيقي.
     float k = 1.0 - clamp(depth / uRefl, 0.0, 1.0);

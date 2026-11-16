@@ -100,8 +100,8 @@ object GlassSwitchSpec {
     val ShadowStepLift = 1.7.dp
 
     const val RefractiveIndex = 1.5f
-    const val DispersionRest = 0.01f
-    const val DispersionLift = 0.05f
+    const val DispersionRest = 0.10f
+    const val DispersionLift = 0.40f
 }
 
 private fun mixF(a: Float, b: Float, t: Float): Float = a + (b - a) * t
@@ -493,7 +493,7 @@ private class SwitchLensHolder {
 
 /**
  * شيدر AGSL لعدسة مفتاح iOS 27: المركز مسطّح بلا تكبير، والانكسار في حافة ضيقة فقط
- * بقانون سنيل على منحنى سطح محدّب، وتشتّت لوني خفيف جداً، ولا حلقة منعكسة.
+ * بقانون سنيل على منحنى سطح محدّب، وهالة نيلية خفيفة عند الحافة، ولا حلقة منعكسة.
  */
 private object SwitchLensShader {
     const val SOURCE: String = """
@@ -541,10 +541,13 @@ half4 main(float2 fragCoord) {
     float shiftLen = uThick * h * tan(thetaI - thetaT);
     float2 shift = outward * shiftLen;
 
-    half4 cr = content.eval(clampCoord(fragCoord + shift * (1.0 + uDisp)));
     half4 cg = content.eval(clampCoord(fragCoord + shift));
-    half4 cb = content.eval(clampCoord(fragCoord + shift * (1.0 - uDisp)));
-    return half4(cr.r, cg.g, cb.b, cg.a);
+    half4 cf = content.eval(clampCoord(fragCoord + shift * (1.0 + uDisp)));
+    // هالة نيلية خفيفة عند الحافة، تظهر حيث يختلف المحتوى المنكسر.
+    float fringe = clamp(distance(float3(cf.rgb), float3(cg.rgb)) * 2.0, 0.0, 1.0) * (1.0 - t);
+    half4 col = cg;
+    col.rgb = mix(col.rgb, half3(0.31, 0.27, 0.90) * col.a, half(fringe * 0.6));
+    return col;
 }
 """
 }
