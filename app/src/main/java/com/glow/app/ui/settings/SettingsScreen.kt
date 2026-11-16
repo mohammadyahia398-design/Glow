@@ -27,8 +27,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -57,6 +55,7 @@ import com.glow.app.ui.common.GlowChoiceDialog
 import com.glow.app.ui.common.GlowIcon
 import com.glow.app.ui.common.IconKind
 import com.glow.app.ui.common.GlowTopBar
+import com.glow.app.ui.glass.components.GlassSwitch
 import com.glow.app.ui.theme.Colorways
 import com.glow.app.ui.theme.LocalGlowSkin
 import com.glow.app.ui.theme.colorToHsv
@@ -140,17 +139,12 @@ fun SettingsScreen(
                 chevron = false,
                 onClick = { store.updateSkipShortSongs(!store.skipShortSongs) },
                 trailing = {
-                    Switch(
+                    GlassSwitch(
                         checked = store.skipShortSongs,
-                        onCheckedChange = null,
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = Color.White,
-                            checkedTrackColor = skin.accent,
-                            checkedBorderColor = Color.Transparent,
-                            uncheckedThumbColor = skin.textSecondary,
-                            uncheckedTrackColor = skin.chip,
-                            uncheckedBorderColor = skin.textSecondary.copy(alpha = 0.5f),
-                        ),
+                        onCheckedChange = { store.updateSkipShortSongs(it) },
+                        checkedTrackColor = skin.accent,
+                        uncheckedTrackColor = skin.textSecondary.copy(alpha = 0.35f),
+                        rimColor = if (skin.isDark) Color.White else Color(0xFFFFFFFF),
                     )
                 },
             )
