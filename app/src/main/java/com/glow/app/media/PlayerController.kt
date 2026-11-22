@@ -30,12 +30,16 @@ class PlayerController(
 
     private var player: MediaPlayer? = null
     private var prepared = false
+
+    /** نية المستخدم: هل يجب أن يبدأ التشغيل فور جاهزية المقطع؟ (تشمل مرحلة التحضير). */
+    private var playWhenReady = false
     private var consecutiveErrors = 0
     private var resumeOnFocusGain = false
     private var ticker: Job? = null
     private var focusRequest: AudioFocusRequest? = null
 
     private var speed = 1f
+    private var volume = 1f
     private var sleepJob: Job? = null
     private val _sleepEndsAt = MutableStateFlow<Long?>(null)
 
@@ -57,18 +61,18 @@ class PlayerController(
         when (change) {
             AudioManager.AUDIOFOCUS_LOSS -> {
                 resumeOnFocusGain = false
-                pause()
+                pauseInternal()
                 abandonFocus()
             }
             AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> {
-                if (isPlayingNow()) {
+                if (playWhenReady) {
                     resumeOnFocusGain = true
-                    pause()
+                    pauseInternal()
                 }
             }
-            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> player?.setVolume(0.3f, 0.3f)
+            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> setVolumeLevel(DUCK_VOLUME)
             AudioManager.AUDIOFOCUS_GAIN -> {
-                player?.setVolume(1f, 1f)
+                setVolumeLevel(1f)
                 if (resumeOnFocusGain) {
                     resumeOnFocusGain = false
                     resume()
@@ -88,7 +92,7 @@ class PlayerController(
     }
 
     fun togglePlay() {
-        if (isPlayingNow()) pause() else resume()
+        if (playWhenReady) pause() else resume()
     }
 
     fun resume() {
@@ -97,7 +101,13 @@ class PlayerController(
             if (tracks.isNotEmpty()) playCurrent()
             return
         }
-        if (prepared && !mp.isPlaying && requestFocus()) {
+        if (!prepared) {
+            // المقطع ما زال قيد التحضير: نسجّل النية فقط ويبدأ عند الجاهزية.
+            if (requestFocus()) playWhenReady = true
+            return
+        }
+        if (!mp.isPlaying && requestFocus()) {
+            playWhenReady = true
             mp.start()
             applySpeed()
             startTicker()
@@ -105,11 +115,10 @@ class PlayerController(
         }
     }
 
+    /** إيقاف مؤقت بطلب المستخدم: يلغي أي استئناف تلقائي مرتبط بتركيز الصوت. */
     fun pause() {
-        val mp = player
-        if (mp != null && prepared && mp.isPlaying) mp.pause()
-        stopTicker()
-        publish()
+        resumeOnFocusGain = false
+        pauseInternal()
     }
 
     fun next() {
@@ -128,7 +137,9 @@ class PlayerController(
     fun seekTo(positionMs: Long) {
         val mp = player ?: return
         if (!prepared) return
-        mp.seekTo(positionMs.toInt())
+        val duration = mp.duration
+        val target = if (duration > 0) positionMs.coerceIn(0L, duration.toLong()) else positionMs.coerceAtLeast(0L)
+        mp.seekTo(target.toInt())
         publish()
     }
 
@@ -160,6 +171,7 @@ class PlayerController(
         sleepJob = scope.launch {
             delay(delayMs)
             pause()
+            abandonFocus()
             _sleepEndsAt.value = null
             sleepJob = null
         }
@@ -177,6 +189,10 @@ class PlayerController(
 
     fun release() {
         sleepJob?.cancel()
+        sleepJob = null
+        _sleepEndsAt.value = null
+        playWhenReady = false
+        resumeOnFocusGain = false
         stopTicker()
         releasePlayer()
         abandonFocus()
@@ -184,26 +200,56 @@ class PlayerController(
 
     // ── الداخل ─────────────────────────────────────────────────
 
-    private fun isPlayingNow(): Boolean = prepared && player?.isPlaying == true
+    private fun pauseInternal() {
+        playWhenReady = false
+        val mp = player
+        if (mp != null && prepared && mp.isPlaying) mp.pause()
+        stopTicker()
+        publish()
+    }
 
+    private fun setVolumeLevel(level: Float) {
+        volume = level
+        player?.setVolume(level, level)
+    }
+
+    /**
+     * يشغّل المقطع الحالي، ويتخطى تلقائياً المقاطع التي يفشل تحضيرها فوراً.
+     * حلقة بدل الاستدعاء الذاتي لتجنّب تعمّق المكدّس في قوائم كبيرة تالفة.
+     */
     private fun playCurrent() {
-        val index = queue.currentIndex ?: return
-        val track = tracks.getOrNull(index) ?: return
+        while (true) {
+            val index = queue.currentIndex ?: return
+            val track = tracks.getOrNull(index) ?: return
 
-        releasePlayer()
-        if (!requestFocus()) {
-            publish()
-            return
+            releasePlayer()
+            if (!requestFocus()) {
+                playWhenReady = false
+                publish()
+                return
+            }
+            playWhenReady = true
+            if (startPlayer(track)) return
+            if (!advanceAfterFailure()) return
         }
+    }
 
+    /** @return true إن بدأ التحضير بنجاح، false إن فشل إنشاء المشغّل فوراً. */
+    private fun startPlayer(track: Track): Boolean {
         val mp = MediaPlayer()
         try {
             mp.setAudioAttributes(audioAttributes)
             mp.setWakeMode(context, PowerManager.PARTIAL_WAKE_LOCK)
+            mp.setVolume(volume, volume)
             mp.setDataSource(context, track.uri)
             mp.setOnPreparedListener {
                 prepared = true
                 consecutiveErrors = 0
+                if (!playWhenReady) {
+                    // أوقفه المستخدم أو فقد التركيز أثناء التحضير.
+                    publish()
+                    return@setOnPreparedListener
+                }
                 try {
                     it.start()
                 } catch (_: Exception) {
@@ -222,30 +268,39 @@ class PlayerController(
             mp.prepareAsync()
         } catch (_: Exception) {
             mp.release()
-            handleError()
-            return
+            return false
         }
         player = mp
         prepared = false
         publish()
+        return true
     }
 
     private fun onCompleted() {
         if (queue.next(auto = true) != null) playCurrent() else stopPlayback()
     }
 
-    /** مقطع تالف أو غير قابل للقراءة: نتخطاه، ونتوقف إن تعطلت القائمة كلها. */
+    /** خطأ أثناء التحضير أو التشغيل: نتخطى المقطع التالف. */
     private fun handleError() {
         releasePlayer()
+        if (advanceAfterFailure()) playCurrent()
+    }
+
+    /**
+     * يسجّل فشل مقطع وينتقل للتالي.
+     * @return false إن تعطلت القائمة كلها أو انتهت (وقد أُوقف التشغيل).
+     */
+    private fun advanceAfterFailure(): Boolean {
         consecutiveErrors++
         if (consecutiveErrors >= tracks.size || queue.next(auto = false) == null) {
             stopPlayback()
-        } else {
-            playCurrent()
+            return false
         }
+        return true
     }
 
     private fun stopPlayback() {
+        playWhenReady = false
         stopTicker()
         releasePlayer()
         abandonFocus()
@@ -309,5 +364,6 @@ class PlayerController(
     private companion object {
         const val TICK_MS = 500L
         const val RESTART_THRESHOLD_MS = 3_000
+        const val DUCK_VOLUME = 0.3f
     }
 }
