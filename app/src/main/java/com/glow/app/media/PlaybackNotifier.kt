@@ -9,9 +9,19 @@ import android.content.Intent
 import android.graphics.drawable.Icon
 import android.media.session.MediaSession
 import com.glow.app.MainActivity
+import com.glow.app.R
 
 /** يبني إشعار التشغيل (MediaStyle) وقناته. */
 class PlaybackNotifier(private val context: Context) {
+
+    // عناصر لا تتغير مع الحالة: تُبنى مرة واحدة بدل كل تحديث للإشعار.
+    private val previousAction by lazy {
+        action(R.drawable.ic_notif_previous, "السابق", GlowMediaSessionService.ACTION_PREVIOUS, 1)
+    }
+    private val nextAction by lazy {
+        action(R.drawable.ic_notif_next, "التالي", GlowMediaSessionService.ACTION_NEXT, 3)
+    }
+    private val openAppIntent by lazy { createOpenAppIntent() }
 
     fun ensureChannel() {
         val manager = context.getSystemService(NotificationManager::class.java)
@@ -20,29 +30,40 @@ class PlaybackNotifier(private val context: Context) {
                 CHANNEL_ID,
                 "التشغيل",
                 NotificationManager.IMPORTANCE_LOW,
-            ).apply { setShowBadge(false) }
+            ).apply {
+                description = "عناصر التحكم بالموسيقى أثناء التشغيل"
+                setShowBadge(false)
+                setSound(null, null)
+            }
             manager.createNotificationChannel(channel)
         }
     }
 
     fun build(state: PlayerState, token: MediaSession.Token): Notification {
         val track = state.current
-        val toggleIcon =
-            if (state.isPlaying) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play
+        val toggleIcon = if (state.isPlaying) R.drawable.ic_notif_pause else R.drawable.ic_notif_play
         val toggleLabel = if (state.isPlaying) "إيقاف مؤقت" else "تشغيل"
 
+        // نفس منطق العرض في المكتبة: العنوان المقروء، والفنان أو تاريخ الإضافة عند غيابه.
+        val title = track?.displayTitle ?: "Glow"
+        val text = track?.let { t ->
+            t.artist.takeIf { it != UNKNOWN_ARTIST } ?: t.addedLabel ?: t.artist
+        }.orEmpty()
+
         return Notification.Builder(context, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.stat_sys_headset)
-            .setContentTitle(track?.title ?: "Glow")
-            .setContentText(track?.artist.orEmpty())
-            .setContentIntent(openAppIntent())
+            .setSmallIcon(R.drawable.ic_stat_glow)
+            .setColor(context.getColor(R.color.glow_accent))
+            .setCategory(Notification.CATEGORY_TRANSPORT)
+            .setContentTitle(title)
+            .setContentText(text)
+            .setContentIntent(openAppIntent)
             .setVisibility(Notification.VISIBILITY_PUBLIC)
             .setOnlyAlertOnce(true)
             .setShowWhen(false)
             .setOngoing(state.isPlaying)
-            .addAction(action(android.R.drawable.ic_media_previous, "السابق", GlowMediaSessionService.ACTION_PREVIOUS, 1))
+            .addAction(previousAction)
             .addAction(action(toggleIcon, toggleLabel, GlowMediaSessionService.ACTION_TOGGLE, 2))
-            .addAction(action(android.R.drawable.ic_media_next, "التالي", GlowMediaSessionService.ACTION_NEXT, 3))
+            .addAction(nextAction)
             .setStyle(
                 Notification.MediaStyle()
                     .setMediaSession(token)
@@ -62,7 +83,7 @@ class PlaybackNotifier(private val context: Context) {
         return Notification.Action.Builder(Icon.createWithResource(context, iconRes), label, pending).build()
     }
 
-    private fun openAppIntent(): PendingIntent {
+    private fun createOpenAppIntent(): PendingIntent {
         val intent = Intent(context, MainActivity::class.java)
             .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP)
         return PendingIntent.getActivity(
@@ -75,5 +96,8 @@ class PlaybackNotifier(private val context: Context) {
 
     companion object {
         const val CHANNEL_ID = "glow_playback"
+
+        // مطابقة لقيمة MediaStoreRepository الخاصة (private) ولما تستخدمه LibraryScreen.
+        private const val UNKNOWN_ARTIST = "فنان غير معروف"
     }
 }
