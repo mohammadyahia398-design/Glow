@@ -1,6 +1,8 @@
 package com.glow.app.media
 
+import android.app.Notification
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.Service
 import android.content.Intent
 import android.content.pm.ServiceInfo
@@ -10,10 +12,15 @@ import android.media.session.PlaybackState
 import android.os.Binder
 import android.os.Build
 import android.os.IBinder
+import android.os.SystemClock
+import com.glow.app.MainActivity
+import kotlin.math.abs
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
@@ -37,6 +44,17 @@ class GlowMediaSessionService : Service() {
     private var isForeground = false
     private var lastKey: Pair<Long?, Boolean>? = null
 
+    /** مهلة قصيرة قبل مغادرة المقدمة، كي لا نفقدها بين مقطع وآخر أثناء التحضير. */
+    private var detachJob: Job? = null
+
+    // آخر قيم أُرسلت إلى الجلسة، لتفادي تحديثها كل نصف ثانية بلا حاجة.
+    private var metaTrackId: Long? = null
+    private var metaDurationMs = -1L
+    private var pbCode = -1
+    private var pbTrackId: Long? = null
+    private var pbPositionMs = 0L
+    private var pbRealtimeMs = 0L
+
     override fun onCreate() {
         super.onCreate()
         notificationManager = getSystemService(NotificationManager::class.java)
@@ -46,6 +64,7 @@ class GlowMediaSessionService : Service() {
         controller = PlayerController(this, scope)
 
         session = MediaSession(this, SESSION_TAG).apply {
+            setSessionActivity(openAppIntent())
             setCallback(object : MediaSession.Callback() {
                 override fun onPlay() = this@GlowMediaSessionService.controller.resume()
                 override fun onPause() = this@GlowMediaSessionService.controller.pause()
@@ -70,7 +89,20 @@ class GlowMediaSessionService : Service() {
             ACTION_PREVIOUS -> controller.previous()
         }
         // startForegroundService يفرض استدعاء startForeground خلال خمس ثوانٍ.
-        enterForeground(notifier.build(controller.state.value, session.sessionToken))
+        val state = controller.state.value
+        enterForeground(notifier.build(state, session.sessionToken))
+        lastKey = state.current?.id to state.isPlaying
+
+        when {
+            state.current == null -> {
+                // لا شيء للتشغيل: لا نبقى في المقدمة بإشعار فارغ.
+                leaveForeground(detach = false)
+                notificationManager.cancel(NOTIFICATION_ID)
+                stopSelf()
+            }
+            state.isPlaying -> cancelDetach()
+            else -> scheduleDetach()
+        }
         return START_NOT_STICKY
     }
 
@@ -79,11 +111,18 @@ class GlowMediaSessionService : Service() {
         return false
     }
 
+    /** عند إزالة التطبيق من المهام: لا نُبقي خدمة متوقفة تحتفظ بالمشغّل والإشعار. */
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        if (!controller.state.value.isPlaying) stopSelf()
+        super.onTaskRemoved(rootIntent)
+    }
+
     override fun onDestroy() {
         scope.cancel()
         session.isActive = false
         session.release()
         controller.release()
+        notificationManager.cancel(NOTIFICATION_ID)
         super.onDestroy()
     }
 
@@ -98,12 +137,16 @@ class GlowMediaSessionService : Service() {
 
         val notification = notifier.build(state, session.sessionToken)
         when {
-            state.isPlaying -> enterForeground(notification)
+            state.isPlaying -> {
+                cancelDetach()
+                enterForeground(notification)
+            }
             state.current != null -> {
-                leaveForeground(detach = true)
                 notificationManager.notify(NOTIFICATION_ID, notification)
+                if (isForeground) scheduleDetach()
             }
             else -> {
+                cancelDetach()
                 leaveForeground(detach = false)
                 notificationManager.cancel(NOTIFICATION_ID)
             }
@@ -112,45 +155,107 @@ class GlowMediaSessionService : Service() {
 
     private fun updateSession(state: PlayerState) {
         val track = state.current
-        session.setMetadata(
-            MediaMetadata.Builder()
-                .putString(MediaMetadata.METADATA_KEY_TITLE, track?.title)
-                .putString(MediaMetadata.METADATA_KEY_ARTIST, track?.artist)
-                .putString(MediaMetadata.METADATA_KEY_ALBUM, track?.album)
-                .putLong(MediaMetadata.METADATA_KEY_DURATION, state.durationMs)
-                .build(),
-        )
 
-        val playbackState = when {
+        if (track?.id != metaTrackId || state.durationMs != metaDurationMs) {
+            metaTrackId = track?.id
+            metaDurationMs = state.durationMs
+            session.setMetadata(
+                MediaMetadata.Builder()
+                    .putString(MediaMetadata.METADATA_KEY_TITLE, track?.title)
+                    .putString(MediaMetadata.METADATA_KEY_ARTIST, track?.artist)
+                    .putString(MediaMetadata.METADATA_KEY_ALBUM, track?.album)
+                    .putLong(MediaMetadata.METADATA_KEY_DURATION, state.durationMs)
+                    .build(),
+            )
+        }
+
+        val code = when {
             track == null -> PlaybackState.STATE_NONE
             state.isPlaying -> PlaybackState.STATE_PLAYING
             else -> PlaybackState.STATE_PAUSED
         }
-        session.setPlaybackState(
-            PlaybackState.Builder()
-                .setActions(SESSION_ACTIONS)
-                .setState(playbackState, state.positionMs, 1f)
-                .build(),
-        )
+
+        // النظام يستقرئ الموضع أثناء التشغيل، فلا نحدّث الجلسة إلا عند تغيّر الحالة
+        // أو عند قفزة في الموضع (تقديم/تأخير). السرعة غير العادية تُصحَّح تلقائياً بالانحراف.
+        val now = SystemClock.elapsedRealtime()
+        val expected =
+            if (pbCode == PlaybackState.STATE_PLAYING) pbPositionMs + (now - pbRealtimeMs) else pbPositionMs
+        val drifted = abs(state.positionMs - expected) > POSITION_TOLERANCE_MS
+
+        if (code != pbCode || track?.id != pbTrackId || drifted) {
+            pbCode = code
+            pbTrackId = track?.id
+            pbPositionMs = state.positionMs
+            pbRealtimeMs = now
+            session.setPlaybackState(
+                PlaybackState.Builder()
+                    .setActions(SESSION_ACTIONS)
+                    .setState(code, state.positionMs, 1f)
+                    .build(),
+            )
+        }
     }
 
-    private fun enterForeground(notification: android.app.Notification) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            startForeground(
-                NOTIFICATION_ID,
-                notification,
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK,
-            )
-        } else {
-            startForeground(NOTIFICATION_ID, notification)
+    private fun enterForeground(notification: Notification) {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                startForeground(
+                    NOTIFICATION_ID,
+                    notification,
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK,
+                )
+            } else {
+                startForeground(NOTIFICATION_ID, notification)
+            }
+            isForeground = true
+        } catch (_: IllegalStateException) {
+            // Android 12+ قد يمنع الدخول إلى المقدمة من الخلفية؛ نكتفي بتحديث الإشعار بدل الانهيار.
+            isForeground = false
+            notificationManager.notify(NOTIFICATION_ID, notification)
         }
-        isForeground = true
     }
 
     private fun leaveForeground(detach: Boolean) {
         if (!isForeground) return
         stopForeground(if (detach) STOP_FOREGROUND_DETACH else STOP_FOREGROUND_REMOVE)
         isForeground = false
+    }
+
+    private fun scheduleDetach() {
+        detachJob?.cancel()
+        detachJob = scope.launch {
+            delay(FOREGROUND_GRACE_MS)
+            val latest = controller.state.value
+            if (!latest.isPlaying) {
+                if (latest.current != null) {
+                    leaveForeground(detach = true)
+                    notificationManager.notify(
+                        NOTIFICATION_ID,
+                        notifier.build(latest, session.sessionToken),
+                    )
+                } else {
+                    leaveForeground(detach = false)
+                    notificationManager.cancel(NOTIFICATION_ID)
+                }
+            }
+            detachJob = null
+        }
+    }
+
+    private fun cancelDetach() {
+        detachJob?.cancel()
+        detachJob = null
+    }
+
+    private fun openAppIntent(): PendingIntent {
+        val intent = Intent(this, MainActivity::class.java)
+            .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+        return PendingIntent.getActivity(
+            this,
+            0,
+            intent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
     }
 
     companion object {
@@ -160,6 +265,8 @@ class GlowMediaSessionService : Service() {
 
         private const val NOTIFICATION_ID = 1001
         private const val SESSION_TAG = "GlowSession"
+        private const val FOREGROUND_GRACE_MS = 3_000L
+        private const val POSITION_TOLERANCE_MS = 1_500L
 
         private const val SESSION_ACTIONS =
             PlaybackState.ACTION_PLAY or
