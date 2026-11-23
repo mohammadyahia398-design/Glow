@@ -1,0 +1,11 @@
+name = "glow-vocal-worker"
+main = "src/index.js"
+compatibility_date = "2026-11-23"
+
+[[durable_objects.bindings]]
+name = "RATE_LIMITER"
+class_name = "GlowRateLimiter"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["GlowRateLimiter"]
