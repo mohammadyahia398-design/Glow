@@ -59,6 +59,35 @@ class LibraryStore(context: Context) {
         savePlaylists()
     }
 
+    /** يحذف القائمة نهائياً. لا يؤثر على المقاطع نفسها في مكتبة الجهاز. */
+    fun deletePlaylist(playlistId: String) {
+        if (playlists.none { it.id == playlistId }) return
+        playlists = playlists.filterNot { it.id == playlistId }
+        savePlaylists()
+    }
+
+    /** يعيد تسمية القائمة. يتجاهل الاسم الفارغ ويُبقي الاسم القديم. */
+    fun renamePlaylist(playlistId: String, newName: String) {
+        val name = newName.trim()
+        if (name.isEmpty()) return
+        playlists = playlists.map {
+            if (it.id == playlistId) it.copy(name = name) else it
+        }
+        savePlaylists()
+    }
+
+    /** يزيل المقطع من القائمة فقط، ولا يحذفه من الجهاز. */
+    fun removeFromPlaylist(playlistId: String, trackId: Long) {
+        playlists = playlists.map {
+            if (it.id == playlistId && trackId in it.trackIds) {
+                it.copy(trackIds = it.trackIds - trackId)
+            } else {
+                it
+            }
+        }
+        savePlaylists()
+    }
+
     private fun readIds(key: String): List<Long> =
         prefs.getString(key, "").orEmpty().split(",").mapNotNull { it.toLongOrNull() }
 
