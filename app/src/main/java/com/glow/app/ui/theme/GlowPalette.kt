@@ -12,28 +12,33 @@ import androidx.compose.ui.graphics.Color
  * أما المشتقة (Night, Surface, ...) فهي درجات مدروسة من Charcoal لبناء عمق الواجهة.
  */
 object GlowPalette {
-    // ── الأساسية (من المرجع البصري) ─────────────────────────
-    val Charcoal = Color(0xFF07141C)
-    // الاسم Amber محفوظ للتوافق مع بقية الكود؛ القيمة الآن Cyan الهوية الجديدة.
-    val Amber = Color(0xFF06B6D4)
-    val Coral = Color(0xFFFF6B6B)
-    val TwilightBlue = Color(0xFF4A69BD)
-    val Ivory = Color(0xFFF0FDFF)
-    val Muted = Color(0xFF8C92A4)
+    // Canonical Luminous Minimalism palette (from the project handoff).
+    val Void = Color(0xFF090B10)
+    val Night = Color(0xFF0D111A)
+    val Surface = Color(0xFF151B26)
+    val SurfaceLifted = Color(0xFF1C2533)
+    val Amber = Color(0xFFFFA64D)
+    val Coral = Color(0xFFFF7168)
+    val Twilight = Color(0xFF687DEB)
+    val Mint = Color(0xFF82D5BE)
+    val Ivory = Color(0xFFF6F1E9)
+    val Muted = Color(0xFF9299A8)
 
-    // ── مشتقة ───────────────────────────────────────────────
-    val Teal = Color(0xFF5FB3A6)           // الطبيعة والهدوء
-    val TwilightSoft = Color(0xFF8FA6E8)   // نسخة مقروءة من Twilight على الخلفية الداكنة
-    val Night = Color(0xFF12303D)
-    val Surface = Color(0xFF1A1D25)
-    val SurfaceLifted = Color(0xFF222632)
-    val OutlineSolid = Color(0xFF2A2E3A)
+    // Backward-compatible aliases used by existing screens and effects.
+    val Charcoal = Void
+    val TwilightBlue = Twilight
+    val Teal = Mint
+    val TwilightSoft = Color(0xFFAAB5FF)
+    val OutlineSolid = Color(0xFF303949)
 
-    // ── شفافيات الزجاج ──────────────────────────────────────
-    val Hairline = Color(0x1FF5F6FA)        // Ivory 12%
-    val GlassFill = Color(0xA6141620)       // Night 65%
-    val GlassHighlight = Color(0x4DF5F6FA)  // Ivory 30%
+    // Shared glass tokens. Strong optical effects are implemented in the glass batch.
+    val Hairline = Color(0x26F6F1E9)
+    val GlassFill = Color(0xA6151B26)
+    val GlassHighlight = Color(0x40F6F1E9)
+    val GlassEdge = Color(0x66F6F1E9)
+    val GlassShadow = Color(0x66000000)
 }
+
 
 /** ألوان الحالات المزاجية (Mood) للبطاقات والتدرجات. */
 object GlowMoodColors {

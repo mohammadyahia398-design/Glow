@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.glow.app.media.Track
 import com.glow.app.ui.theme.LocalGlowSkin
+import com.glow.app.ui.theme.GlowTheme
 
 fun formatTime(ms: Long): String {
     val s = ms / 1000
@@ -47,20 +48,20 @@ fun MediaRow(
     val skin = LocalGlowSkin.current
     Column(modifier.fillMaxWidth().combinedClickable(onClick = onClick, onLongClick = onLongClick)) {
         Row(
-            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
+            Modifier.fillMaxWidth().padding(horizontal = GlowTheme.dimens.screenPadding, vertical = 7.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            horizontalArrangement = Arrangement.spacedBy(GlowTheme.dimens.spaceMd),
         ) {
             if (leading != null) {
                 Box(Modifier.width(32.dp), contentAlignment = Alignment.Center) { leading() }
             } else {
-                AlbumArt(art, Modifier.size(52.dp), radius = 14.dp)
+                AlbumArt(art, Modifier.size(GlowTheme.dimens.artworkMedium), radius = 14.dp)
             }
             Column(Modifier.weight(1f)) {
                 Text(
                     text = title,
                     color = if (highlight) skin.accentText else skin.text,
-                    fontSize = 17.sp,
+                    fontSize = 16.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -80,7 +81,7 @@ fun MediaRow(
         }
         Box(
             Modifier
-                .padding(start = 82.dp, end = 20.dp)
+                .padding(start = 82.dp, end = GlowTheme.dimens.screenPadding)
                 .fillMaxWidth()
                 .height(0.5.dp)
                 .background(skin.divider),

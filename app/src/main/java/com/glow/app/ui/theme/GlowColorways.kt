@@ -26,10 +26,10 @@ data class Colorway(
 object Colorways {
     val Glow = Colorway(
         id = "glow",
-        name = "سماوي",
-        blobs = listOf(Color(0xFF06B6D4), Color(0xFF67E8F9), Color(0xFF0E7490), Color(0xFF12303D)),
-        accent = Color(0xFF06B6D4),
-        bg = Color(0xFF07141C),
+        name = "وهج",
+        blobs = listOf(GlowPalette.Amber, GlowPalette.Coral, GlowPalette.Twilight, GlowPalette.Mint),
+        accent = GlowPalette.Amber,
+        bg = GlowPalette.Void,
     )
     val Dusk = Colorway(
         id = "dusk",

@@ -4,13 +4,7 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 
-/**
- * ألوان الواجهة في الوضعين الداكن والفاتح. تُقرأ في أي Composable عبر
- * `LocalGlowSkin.current`.
- *
- * لوحة Glow: 07141C و12303D (الداكن)، 06B6D4 و67E8F9 (التمييز)، F0FDFF (الفاتح).
- * اللون 0E7490 مشتق من 06B6D4 للنصوص على الخلفية الفاتحة، لأن 06B6D4 وحده ضعيف التباين هناك.
- */
+/** Semantic colors shared by every Glow screen and reusable component. */
 @Immutable
 data class GlowSkin(
     val isDark: Boolean,
@@ -18,76 +12,71 @@ data class GlowSkin(
     val bgBottom: Color,
     val text: Color,
     val textSecondary: Color,
-    /** لون التعبئة: الأزرار والتقدم. */
     val accent: Color,
-    /** لون المحتوى فوق [accent]. */
     val onAccent: Color,
-    /** لون التمييز للنصوص والأيقونات. */
     val accentText: Color,
-    /** لوح القوائم. */
     val panel: Color,
-    /** خلفية الأزرار الثانوية وحقل البحث. */
     val chip: Color,
     val divider: Color,
-    /** سطح النوافذ المنبثقة. */
     val sheet: Color,
     val glassTint: Color,
     val glassBase: Color,
     val glassBorder: Color,
-    /** حاوية التمييز (primaryContainer) والمحتوى فوقها وحدّ المخطّطات. */
-    val containerColor: Color = Color(0xFF12303D),
-    val onContainerColor: Color = Color(0xFF67E8F9),
-    val outlineVariantColor: Color = Color(0xFF1E4352),
+    val containerColor: Color = Color(0xFF1C2533),
+    val onContainerColor: Color = Color(0xFFF6F1E9),
+    val outlineVariantColor: Color = Color(0xFF303949),
 )
 
 object GlowSkins {
-    private val Night = Color(0xFF07141C)
-    private val Teal = Color(0xFF12303D)
-    private val Cyan = Color(0xFF06B6D4)
-    private val Ice = Color(0xFF67E8F9)
-    private val Frost = Color(0xFFF0FDFF)
-    private val FrostDeep = Color(0xFFC7F7FD)
-    private val CyanDeep = Color(0xFF0E7490)
-    private val Ink = Color(0xFF040B10)
-    private val InkDeep = Color(0xFF0B1E28)
+    private val Void = Color(0xFF090B10)
+    private val Night = Color(0xFF0D111A)
+    private val Surface = Color(0xFF151B26)
+    private val Lifted = Color(0xFF1C2533)
+    private val Amber = Color(0xFFFFA64D)
+    private val Ivory = Color(0xFFF6F1E9)
+    private val Muted = Color(0xFF9299A8)
+    private val LightInk = Color(0xFF202735)
 
     val Dark = GlowSkin(
         isDark = true,
-        bgTop = Ink,
-        bgBottom = InkDeep,
-        text = Frost,
-        textSecondary = Color(0xFF9FB3BC),
-        accent = Cyan,
-        onAccent = Night,
-        accentText = Ice,
-        panel = Color(0xFF101C23),
-        chip = Color(0xFF1B2B35),
-        divider = Frost.copy(alpha = 0.07f),
-        sheet = Color(0xFF16252E),
-        glassTint = Frost,
-        glassBase = InkDeep,
-        glassBorder = Color.White,
+        bgTop = Void,
+        bgBottom = Night,
+        text = Ivory,
+        textSecondary = Muted,
+        accent = Amber,
+        onAccent = Void,
+        accentText = Amber,
+        panel = Surface,
+        chip = Lifted,
+        divider = Ivory.copy(alpha = 0.075f),
+        sheet = Surface.copy(alpha = 0.97f),
+        glassTint = Ivory,
+        glassBase = Night,
+        glassBorder = Ivory.copy(alpha = 0.34f),
+        containerColor = Lifted,
+        onContainerColor = Ivory,
+        outlineVariantColor = Color(0xFF303949),
     )
 
     val Light = GlowSkin(
         isDark = false,
-        bgTop = Frost,
-        bgBottom = FrostDeep,
-        text = Night,
-        textSecondary = Teal.copy(alpha = 0.72f),
-        accent = Cyan,
-        onAccent = Night,
-        accentText = CyanDeep,
-        panel = Color.White.copy(alpha = 0.78f),
-        chip = Teal.copy(alpha = 0.10f),
-        divider = Teal.copy(alpha = 0.10f),
-        sheet = Color.White,
+        bgTop = Color(0xFFF5F2ED),
+        bgBottom = Color(0xFFECE8E1),
+        text = LightInk,
+        textSecondary = Color(0xFF687080),
+        accent = Color(0xFFB96722),
+        onAccent = Color.White,
+        accentText = Color(0xFF9A5019),
+        panel = Color(0xFFFDFBF7),
+        chip = Color(0xFFE8E3DB),
+        divider = LightInk.copy(alpha = 0.10f),
+        sheet = Color(0xFFFCFAF6),
         glassTint = Color.White,
-        glassBase = Frost,
-        glassBorder = Teal,
-        containerColor = Color(0xFF67E8F9),
-        onContainerColor = Color(0xFF07141C),
-        outlineVariantColor = Color(0xFFA5E6F0),
+        glassBase = Color(0xFFF5F2ED),
+        glassBorder = LightInk.copy(alpha = 0.18f),
+        containerColor = Color(0xFFF1D7C0),
+        onContainerColor = LightInk,
+        outlineVariantColor = Color(0xFFD6CEC3),
     )
 }
 

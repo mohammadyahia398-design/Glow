@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.sp
 import com.glow.app.ui.theme.LocalGlowSkin
+import com.glow.app.ui.theme.GlowTheme
 
 /** زر دائري قابل للنقر مع وصف لقارئ الشاشة. */
 @Composable
@@ -66,7 +67,7 @@ fun GlowTopBar(
         modifier
             .fillMaxWidth()
             .statusBarsPadding()
-            .height(56.dp)
+            .height(GlowTheme.dimens.navBarHeight)
             .padding(horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

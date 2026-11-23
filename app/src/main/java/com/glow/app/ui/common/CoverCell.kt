@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.glow.app.media.Track
 import com.glow.app.ui.theme.LocalGlowSkin
+import com.glow.app.ui.theme.GlowShapes
 
 /**
  * خلية شبكة: غلاف مربع بزوايا مدوّرة، وتحته عنوان وسطر ثانوي (اختياريان).
@@ -49,7 +50,7 @@ fun CoverCell(
         Box(Modifier.fillMaxWidth().aspectRatio(1f)) {
             AlbumArt(art, Modifier.fillMaxSize(), radius = 28.dp, px = 400)
             // طبقة زجاجية: صبغة متدرجة من الأسفل، حافة علوية رفيعة لامعة، وإطار ناعم
-            val glassShape = RoundedCornerShape(28.dp)
+            val glassShape = GlowShapes.Artwork
             Box(
                 Modifier
                     .fillMaxSize()
@@ -95,7 +96,7 @@ fun CoverCell(
                 Box(
                     Modifier
                         .fillMaxSize()
-                        .clip(RoundedCornerShape(28.dp))
+                        .clip(GlowShapes.Artwork)
                         .background(Color.Black.copy(alpha = 0.28f)),
                     contentAlignment = Alignment.Center,
                 ) {

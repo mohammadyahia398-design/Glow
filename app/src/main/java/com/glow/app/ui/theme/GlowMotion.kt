@@ -16,10 +16,10 @@ import androidx.compose.ui.platform.LocalContext
 
 /** الحركة: ناعمة، فيزيائية، وبدون مبالغة. */
 object GlowMotion {
-    const val Instant = 100
-    const val Fast = 180
-    const val Medium = 320
-    const val Slow = 560
+    const val Instant = 90
+    const val Fast = 160
+    const val Medium = 280
+    const val Slow = 480
 
     /** دورة التنفس الكاملة 10 ثوانٍ = 6 أنفاس في الدقيقة (إيقاع استرخاء). */
     const val BreathCycleMillis = 10_000
@@ -29,8 +29,8 @@ object GlowMotion {
 
     /** نابض ناعم للعناصر الكبيرة (الكبسولة، الشريط العائم). */
     fun <T> softSpring(): FiniteAnimationSpec<T> = spring(
-        dampingRatio = Spring.DampingRatioLowBouncy,
-        stiffness = Spring.StiffnessLow,
+        dampingRatio = 0.82f,
+        stiffness = Spring.StiffnessMediumLow,
     )
 
     /** نابض سريع بلا ارتداد لتفاعلات اللمس. */
