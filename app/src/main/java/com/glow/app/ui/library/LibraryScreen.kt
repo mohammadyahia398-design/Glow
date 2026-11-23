@@ -105,6 +105,7 @@ fun LibraryScreen(
     tab: LibraryTab,
     onRequestPermission: () -> Unit,
     onPlay: (List<Track>, Int) -> Unit,
+    onQueueTrack: (Track, Boolean) -> Unit,
     onOpen: (MediaGroup) -> Unit,
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
@@ -270,6 +271,8 @@ fun LibraryScreen(
             isFavorite = t.id in store.favorites,
             onToggleFavorite = { store.toggleFavorite(t.id); actionTrack = null },
             onAddToPlaylist = { pickFor = t; actionTrack = null },
+            onAddToQueue = { onQueueTrack(t, false); actionTrack = null },
+            onPlayNext = { onQueueTrack(t, true); actionTrack = null },
             onDismiss = { actionTrack = null },
         )
     }
@@ -394,6 +397,8 @@ private fun ActionsDialog(
     isFavorite: Boolean,
     onToggleFavorite: () -> Unit,
     onAddToPlaylist: () -> Unit,
+    onAddToQueue: () -> Unit,
+    onPlayNext: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     GlowDialog(
@@ -402,6 +407,8 @@ private fun ActionsDialog(
         actions = { GlowDialogAction("إغلاق", onDismiss) },
     ) {
         ActionRow(if (isFavorite) "إزالة من المفضلة" else "إضافة إلى المفضلة", onToggleFavorite)
+        ActionRow("تشغيل بعد المقطع الحالي", onPlayNext)
+        ActionRow("إضافة إلى نهاية الطابور", onAddToQueue)
         ActionRow("إضافة إلى قائمة تشغيل", onAddToPlaylist)
     }
 }

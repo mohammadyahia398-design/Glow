@@ -2,6 +2,11 @@ package com.glow.app.media
 
 import kotlin.random.Random
 
+/**
+ * حالات تكرار قائمة التشغيل.
+ * Off ينهي القائمة عند آخر عنصر، All يعيد بناء دورة كاملة، وOne يعيد المقطع
+ * الحالي عند الانتهاء التلقائي فقط؛ أما طلب التالي يظل انتقالاً يدوياً.
+ */
 enum class RepeatMode {
     Off, All, One;
 
@@ -13,24 +18,41 @@ enum class RepeatMode {
 }
 
 /**
- * منطق ترتيب التشغيل (التالي والسابق والخلط والتكرار).
- * يتعامل مع فهارس القائمة فقط، ولا يعتمد على Android، فيُختبر بوحدة اختبار عادية.
+ * محرك ترتيب مستقل عن Android.
+ *
+ * يحتفظ المحرك بفهرس كل عنصر في القائمة الأصلية، ثم يبني ترتيب التشغيل فوقها.
+ * هذا الفصل يسمح بالخلط وإعادة الترتيب والحذف دون نسخ بيانات Track أو فقدان
+ * هوية العنصر الحالي. جميع مواضع الدوال التي تستقبل position هي مواضع في
+ * ترتيب التشغيل الحالي، وليست فهارس القائمة الأصلية.
  */
 class PlayQueue(private val random: Random = Random.Default) {
 
     private var order: List<Int> = emptyList()
     private var position: Int = -1
 
+    /** هل الخلط مفعّل؟ */
     var shuffle: Boolean = false
         private set
 
+    /** سياسة تكرار نهاية القائمة. */
     var repeat: RepeatMode = RepeatMode.Off
 
+    /** عدد العناصر في ترتيب التشغيل. */
     val size: Int get() = order.size
 
-    /** فهرس المقطع الحالي في القائمة الأصلية، أو null إن كانت فارغة. */
+    /** موضع العنصر الحالي في ترتيب التشغيل، أو -1 للقائمة الفارغة. */
+    val currentPosition: Int get() = position
+
+    /** فهرس العنصر الحالي في القائمة الأصلية. */
     val currentIndex: Int? get() = order.getOrNull(position)
 
+    /** لقطة غير قابلة للتعديل من ترتيب الفهارس الحالي. */
+    fun orderedIndices(): List<Int> = order.toList()
+
+    /**
+     * ينشئ قائمة جديدة.
+     * عند طلب الخلط يبدأ الترتيب بالمقطع المختار ثم يوزع بقية العناصر عشوائياً.
+     */
     fun load(size: Int, startIndex: Int = 0, shuffle: Boolean = false) {
         this.shuffle = shuffle
         if (size <= 0) {
@@ -43,9 +65,83 @@ class PlayQueue(private val random: Random = Random.Default) {
         position = order.indexOf(start)
     }
 
+    /** ينتقل إلى موضع محدد في ترتيب التشغيل، ويرجع فهرسه الأصلي. */
+    fun select(queuePosition: Int): Int? {
+        if (queuePosition !in order.indices) return null
+        position = queuePosition
+        return currentIndex
+    }
+
     /**
-     * @param auto true عند انتهاء المقطع تلقائياً (فيُعاد المقطع نفسه إن كان التكرار One).
-     * @return فهرس المقطع التالي، أو null عند نهاية القائمة دون تكرار.
+     * ينقل عنصراً داخل ترتيب التشغيل دون تغيير العنصر الحالي.
+     * fromPosition وtoPosition موضعان في الترتيب المرئي للمستخدم.
+     */
+    fun move(fromPosition: Int, toPosition: Int): Boolean {
+        if (fromPosition !in order.indices || toPosition !in order.indices) return false
+        if (fromPosition == toPosition) return true
+
+        val currentOriginalIndex = currentIndex
+        val reordered = order.toMutableList()
+        val moved = reordered.removeAt(fromPosition)
+        reordered.add(toPosition, moved)
+        order = reordered
+        position = currentOriginalIndex?.let(order::indexOf) ?: -1
+        return true
+    }
+
+    /**
+     * يحذف عنصراً من موضعه المرئي.
+     * @return فهرس العنصر المحذوف في القائمة الأصلية قبل الحذف.
+     * عند حذف العنصر الحالي يصبح العنصر التالي في الموضع نفسه هو الحالي،
+     * أو العنصر السابق إذا كان المحذوف آخر عنصر.
+     */
+    fun removeAt(queuePosition: Int): Int? {
+        if (queuePosition !in order.indices) return null
+
+        val removedOriginalIndex = order[queuePosition]
+        val oldCurrentOriginalIndex = currentIndex
+        val removedCurrent = removedOriginalIndex == oldCurrentOriginalIndex
+        val oldPosition = position
+
+        val remaining = order.toMutableList().apply { removeAt(queuePosition) }
+        order = remaining.map { original ->
+            if (original > removedOriginalIndex) original - 1 else original
+        }
+
+        position = when {
+            order.isEmpty() -> -1
+            removedCurrent -> queuePosition.coerceAtMost(order.lastIndex)
+            queuePosition < oldPosition -> oldPosition - 1
+            else -> oldPosition.coerceAtMost(order.lastIndex)
+        }
+        return removedOriginalIndex
+    }
+
+    /** يضيف فهارس جديدة إلى نهاية القائمة أو مباشرة بعد العنصر الحالي. */
+    fun append(indices: List<Int>, playNext: Boolean = false) {
+        val additions = indices.asSequence()
+            .filter { it >= 0 && it !in order }
+            .distinct()
+            .toList()
+        if (additions.isEmpty()) return
+
+        if (order.isEmpty()) {
+            order = additions
+            position = 0
+            return
+        }
+
+        order = if (playNext) {
+            order.take(position + 1) + additions + order.drop(position + 1)
+        } else {
+            order + additions
+        }
+    }
+
+    /**
+     * @param auto true عند انتهاء المقطع تلقائياً؛ حينها يعاد المقطع نفسه
+     * إذا كان Repeat One مفعلاً.
+     * @return فهرس المقطع التالي أو null عند نهاية القائمة.
      */
     fun next(auto: Boolean): Int? {
         if (order.isEmpty()) return null
@@ -54,15 +150,15 @@ class PlayQueue(private val random: Random = Random.Default) {
         if (position + 1 < order.size) {
             position++
         } else if (repeat == RepeatMode.All) {
-            val first = if (shuffle) random.nextInt(order.size) else 0
-            order = buildOrder(order.size, first)
-            position = order.indexOf(first)
+            order = if (shuffle) order.shuffled(random) else order
+            position = 0
         } else {
             return null
         }
         return currentIndex
     }
 
+    /** يرجع إلى السابق، أو يبقى عند الأول حسب وضع التكرار. */
     fun previous(): Int? {
         if (order.isEmpty()) return null
         if (position > 0) {
@@ -73,15 +169,20 @@ class PlayQueue(private val random: Random = Random.Default) {
         return currentIndex
     }
 
-    /** يبدّل الخلط مع الإبقاء على المقطع الحالي. */
+    /** يبدّل الخلط مع الاحتفاظ بالعنصر الحالي وبقية العناصر مرة واحدة. */
     fun setShuffle(enabled: Boolean) {
         if (enabled == shuffle) return
         shuffle = enabled
         val current = currentIndex ?: return
-        order = buildOrder(order.size, current)
+        order = if (enabled) {
+            listOf(current) + order.filterNot { it == current }.shuffled(random)
+        } else {
+            order.sorted()
+        }
         position = order.indexOf(current)
     }
 
+    /** يعيد إنشاء الترتيب الأساسي، ويضع العنصر المحدد أولاً. */
     private fun buildOrder(size: Int, first: Int): List<Int> =
         if (shuffle) {
             listOf(first) + (0 until size).filter { it != first }.shuffled(random)

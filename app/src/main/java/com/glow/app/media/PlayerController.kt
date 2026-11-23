@@ -1,12 +1,17 @@
 package com.glow.app.media
 
 import android.content.Context
-import android.media.AudioAttributes
+import android.media.AudioAttributes as PlatformAudioAttributes
 import android.media.AudioFocusRequest
 import android.media.AudioManager
-import android.media.MediaPlayer
-import android.media.PlaybackParams
-import android.os.PowerManager
+import androidx.media3.common.C
+import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackParameters
+import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.common.PlaybackException
+import androidx.media3.common.AudioAttributes as Media3AudioAttributes
+import androidx.media3.exoplayer.ExoPlayer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -17,9 +22,14 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 /**
- * يشغّل الصوت بـ MediaPlayer ويدير الطابور وتركيز الصوت.
- * يجب استدعاء كل دوال هذا الصنف من الخيط الرئيسي.
+ * محرك تشغيل Glow المبني على AndroidX Media3 ExoPlayer.
+ *
+ * يحتفظ هذا الصنف بواجهة التحكم التي تستخدمها الواجهة والخدمة، بينما يتولى
+ * ExoPlayer فك الترميز، التخزين المؤقت، التقديم، سرعة التشغيل، وجلسة الصوت.
+ * إدارة Audio Focus يدوية هنا حتى نحافظ على سلوك ducking والاستئناف الموجود.
+ * يجب استدعاء دوال التحكم من الخيط الرئيسي.
  */
+@OptIn(UnstableApi::class)
 class PlayerController(
     private val context: Context,
     private val scope: CoroutineScope,
@@ -28,10 +38,11 @@ class PlayerController(
     private val queue = PlayQueue()
     private var tracks: List<Track> = emptyList()
 
-    private var player: MediaPlayer? = null
+    private var player: ExoPlayer? = null
     private var prepared = false
+    private var currentAudioSessionId = 0
 
-    /** نية المستخدم: هل يجب أن يبدأ التشغيل فور جاهزية المقطع؟ (تشمل مرحلة التحضير). */
+    /** نية المستخدم: هل يجب أن يبدأ التشغيل فور وصول المشغّل إلى STATE_READY؟ */
     private var playWhenReady = false
     private var consecutiveErrors = 0
     private var resumeOnFocusGain = false
@@ -43,24 +54,28 @@ class PlayerController(
     private var sleepJob: Job? = null
     private val _sleepEndsAt = MutableStateFlow<Long?>(null)
 
-    /** وقت انتهاء مؤقّت النوم (بالمللي ثانية)، أو null إن لم يكن مفعّلاً. */
+    /** وقت انتهاء مؤقّت النوم بالمللي ثانية، أو null إن لم يكن مفعّلاً. */
     val sleepEndsAt: StateFlow<Long?> = _sleepEndsAt.asStateFlow()
 
-    /** معرّف جلسة الصوت الحالية (0 إن لم يكن هناك مشغّل)، يحتاجه المعادل. */
-    val audioSessionId: Int get() = player?.audioSessionId ?: 0
+    /** معرّف جلسة الصوت الحالية، ويُستخدم لربط مؤثرات Android الصوتية. */
+    val audioSessionId: Int get() = currentAudioSessionId
 
     private val _state = MutableStateFlow(PlayerState())
     val state: StateFlow<PlayerState> = _state.asStateFlow()
 
-    private val audioAttributes = AudioAttributes.Builder()
-        .setUsage(AudioAttributes.USAGE_MEDIA)
-        .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+    private val platformAudioAttributes = PlatformAudioAttributes.Builder()
+        .setUsage(PlatformAudioAttributes.USAGE_MEDIA)
+        .setContentType(PlatformAudioAttributes.CONTENT_TYPE_MUSIC)
+        .build()
+
+    private val media3AudioAttributes = Media3AudioAttributes.Builder()
+        .setUsage(C.USAGE_MEDIA)
+        .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
         .build()
 
     private val focusListener = AudioManager.OnAudioFocusChangeListener { change ->
         when (change) {
             AudioManager.AUDIOFOCUS_LOSS -> {
-                // يُعاد مستوى الصوت كي لا يبقى مخفَّضاً (ducking) عند الاستئناف اليدوي لاحقاً.
                 setVolumeLevel(1f)
                 resumeOnFocusGain = false
                 pauseInternal()
@@ -88,9 +103,80 @@ class PlayerController(
     fun playTracks(list: List<Track>, startIndex: Int) {
         if (list.isEmpty()) return
         tracks = list
-        queue.load(list.size, startIndex, queue.shuffle)
+        queue.load(tracks.size, startIndex.coerceIn(0, tracks.lastIndex), queue.shuffle)
         consecutiveErrors = 0
         playCurrent()
+    }
+
+    /** يضيف مقاطع إلى نهاية الطابور دون إيقاف المقطع الحالي. */
+    fun addToQueue(additions: List<Track>) = enqueue(additions, playNext = false)
+
+    /** يضع المقاطع بعد المقطع الحالي مباشرة، مع الحفاظ على ترتيبها. */
+    fun playNext(additions: List<Track>) = enqueue(additions, playNext = true)
+
+    private fun enqueue(additions: List<Track>, playNext: Boolean) {
+        if (additions.isEmpty()) return
+        val existingIds = tracks.asSequence().map { it.id }.toHashSet()
+        val unique = additions.filter { existingIds.add(it.id) }
+        if (unique.isEmpty()) return
+
+        val wasEmpty = queue.currentIndex == null
+        val firstNewIndex = tracks.size
+        tracks = tracks + unique
+        queue.append((firstNewIndex until tracks.size).toList(), playNext)
+        if (wasEmpty) {
+            consecutiveErrors = 0
+            playCurrent()
+        } else {
+            refreshPlaylist(preservePosition = true, autoPlay = playWhenReady)
+        }
+    }
+
+    /** يشغّل عنصراً من موضعه الحالي في شاشة قائمة التشغيل. */
+    fun playQueueItem(queuePosition: Int) {
+        if (queue.select(queuePosition) != null) {
+            consecutiveErrors = 0
+            selectCurrentAndPlay()
+        }
+    }
+
+    /** يعيد ترتيب عنصرين مع إبقاء المقطع الحالي كما هو. */
+    fun moveQueueItem(fromPosition: Int, toPosition: Int) {
+        if (queue.move(fromPosition, toPosition)) {
+            refreshPlaylist(preservePosition = true, autoPlay = playWhenReady)
+        }
+    }
+
+    /** يحذف عنصراً من الطابور فقط؛ لا يحذف الملف من الجهاز. */
+    fun removeQueueItem(queuePosition: Int) {
+        val oldCurrentPosition = queue.currentPosition
+        val wasCurrent = queuePosition == oldCurrentPosition
+        val shouldResume = playWhenReady
+        val removedOriginalIndex = queue.removeAt(queuePosition) ?: return
+        tracks = tracks.toMutableList().apply {
+            if (removedOriginalIndex in indices) removeAt(removedOriginalIndex)
+        }
+        if (tracks.isEmpty() || queue.currentIndex == null) {
+            stopPlayback()
+        } else if (wasCurrent) {
+            consecutiveErrors = 0
+            refreshPlaylist(preservePosition = false, autoPlay = shouldResume)
+        } else {
+            refreshPlaylist(preservePosition = true, autoPlay = shouldResume)
+        }
+    }
+
+    /** يبقي المقطع الحالي ويحذف كل المقاطع القادمة دفعة واحدة. */
+    fun clearUpcoming() {
+        val current = queue.currentPosition
+        if (current < 0) return
+        for (index in queue.size - 1 downTo current + 1) {
+            val removedOriginalIndex = queue.removeAt(index) ?: continue
+            tracks = tracks.toMutableList().apply {
+                if (removedOriginalIndex in indices) removeAt(removedOriginalIndex)
+            }
+        }
+        refreshPlaylist(preservePosition = true, autoPlay = playWhenReady)
     }
 
     fun togglePlay() {
@@ -98,19 +184,21 @@ class PlayerController(
     }
 
     fun resume() {
-        val mp = player
-        if (mp == null) {
+        val activePlayer = player
+        if (activePlayer == null) {
             if (tracks.isNotEmpty()) playCurrent()
             return
         }
         if (!prepared) {
-            // المقطع ما زال قيد التحضير: نسجّل النية فقط ويبدأ عند الجاهزية.
-            if (requestFocus()) playWhenReady = true
+            if (requestFocus()) {
+                playWhenReady = true
+                activePlayer.playWhenReady = true
+            }
             return
         }
-        if (!mp.isPlaying && requestFocus()) {
+        if (!activePlayer.isPlaying && requestFocus()) {
             playWhenReady = true
-            mp.start()
+            activePlayer.play()
             applySpeed()
             startTicker()
             publish()
@@ -124,40 +212,48 @@ class PlayerController(
     }
 
     fun next() {
-        if (queue.next(auto = false) != null) playCurrent()
+        val oldOrder = queue.orderedIndices()
+        if (queue.next(auto = false) != null) {
+            if (oldOrder != queue.orderedIndices()) {
+                refreshPlaylist(preservePosition = false, autoPlay = true)
+            } else {
+                selectCurrentAndPlay()
+            }
+        }
     }
 
     fun previous() {
-        val mp = player
-        if (mp != null && prepared && mp.currentPosition > RESTART_THRESHOLD_MS) {
+        val activePlayer = player
+        if (activePlayer != null && prepared && activePlayer.currentPosition > RESTART_THRESHOLD_MS) {
             seekTo(0L)
         } else if (queue.previous() != null) {
-            playCurrent()
+            selectCurrentAndPlay()
         }
     }
 
     fun seekTo(positionMs: Long) {
-        val mp = player ?: return
+        val activePlayer = player ?: return
         if (!prepared) return
-        val duration = mp.duration
-        val target = if (duration > 0) positionMs.coerceIn(0L, duration.toLong()) else positionMs.coerceAtLeast(0L)
-        mp.seekTo(target.toInt())
+        val duration = activePlayer.duration
+        val target = if (duration > 0L && duration != C.TIME_UNSET) {
+            positionMs.coerceIn(0L, duration)
+        } else {
+            positionMs.coerceAtLeast(0L)
+        }
+        activePlayer.seekTo(target)
         publish()
     }
 
     fun setSpeed(value: Float) {
-        speed = value
+        speed = if (value.isFinite() && value > 0f) value.coerceIn(MIN_SPEED, MAX_SPEED) else 1f
         applySpeed()
     }
 
-    /** يطبّق السرعة فقط أثناء التشغيل، لأن ضبطها وهو متوقف قد يبدأ التشغيل. */
+    /** يطبق السرعة حتى أثناء الإيقاف؛ لا يستدعي play ولا يغيّر نية التشغيل. */
     private fun applySpeed() {
-        val mp = player ?: return
-        if (!prepared || !mp.isPlaying) return
-        try {
-            mp.playbackParams = PlaybackParams().setSpeed(speed)
-        } catch (_: Exception) {
-            // سرعة غير مدعومة على هذا الجهاز: نبقي السرعة العادية.
+        val activePlayer = player ?: return
+        runCatching {
+            activePlayer.setPlaybackParameters(PlaybackParameters(speed, 1f))
         }
     }
 
@@ -168,7 +264,8 @@ class PlayerController(
             _sleepEndsAt.value = null
             return
         }
-        val delayMs = minutes * 60_000L
+        val safeMinutes = minutes.coerceAtMost(MAX_SLEEP_MINUTES)
+        val delayMs = safeMinutes * 60_000L
         _sleepEndsAt.value = System.currentTimeMillis() + delayMs
         sleepJob = scope.launch {
             delay(delayMs)
@@ -181,11 +278,12 @@ class PlayerController(
 
     fun setShuffle(enabled: Boolean) {
         queue.setShuffle(enabled)
-        publish()
+        refreshPlaylist(preservePosition = true, autoPlay = playWhenReady)
     }
 
     fun cycleRepeat() {
         queue.repeat = queue.repeat.cycle()
+        player?.repeatMode = media3RepeatMode()
         publish()
     }
 
@@ -200,86 +298,208 @@ class PlayerController(
         abandonFocus()
     }
 
-    // ── الداخل ─────────────────────────────────────────────────
+    // ── إدارة المشغّل ───────────────────────────────────────────
 
     private fun pauseInternal() {
         playWhenReady = false
-        val mp = player
-        if (mp != null && prepared && mp.isPlaying) mp.pause()
+        player?.pause()
         stopTicker()
         publish()
     }
 
     private fun setVolumeLevel(level: Float) {
-        volume = level
-        player?.setVolume(level, level)
+        volume = level.coerceIn(0f, 1f)
+        player?.volume = volume
     }
 
     /**
-     * يشغّل المقطع الحالي، ويتخطى تلقائياً المقاطع التي يفشل تحضيرها فوراً.
+     * يشغّل المقطع الحالي، ويتخطى تلقائياً المقاطع التي يفشل إنشاء مصدرها.
      * حلقة بدل الاستدعاء الذاتي لتجنّب تعمّق المكدّس في قوائم كبيرة تالفة.
      */
     private fun playCurrent() {
+        if (queue.currentIndex == null) return
+        if (!requestFocus()) {
+            playWhenReady = false
+            if (player != null) refreshPlaylist(preservePosition = false, autoPlay = false)
+            else publish()
+            return
+        }
+        playWhenReady = true
+        val activePlayer = player
+        if (activePlayer != null) {
+            refreshPlaylist(preservePosition = false, autoPlay = true)
+            return
+        }
+
         while (true) {
             val index = queue.currentIndex ?: return
-            val track = tracks.getOrNull(index) ?: return
-
-            releasePlayer()
-            if (!requestFocus()) {
-                playWhenReady = false
-                publish()
-                return
-            }
-            playWhenReady = true
-            if (startPlayer(track)) return
+            tracks.getOrNull(index) ?: return
+            if (startPlayer()) return
             if (!advanceAfterFailure()) return
         }
     }
 
-    /** @return true إن بدأ التحضير بنجاح، false إن فشل إنشاء المشغّل فوراً. */
-    private fun startPlayer(track: Track): Boolean {
-        val mp = MediaPlayer()
-        try {
-            mp.setAudioAttributes(audioAttributes)
-            mp.setWakeMode(context, PowerManager.PARTIAL_WAKE_LOCK)
-            mp.setVolume(volume, volume)
-            mp.setDataSource(context, track.uri)
-            mp.setOnPreparedListener {
-                prepared = true
-                consecutiveErrors = 0
-                if (!playWhenReady) {
-                    // أوقفه المستخدم أو فقد التركيز أثناء التحضير.
-                    publish()
-                    return@setOnPreparedListener
-                }
-                try {
-                    it.start()
-                } catch (_: Exception) {
-                    handleError()
-                    return@setOnPreparedListener
-                }
-                applySpeed()
-                startTicker()
-                publish()
-            }
-            mp.setOnCompletionListener { onCompleted() }
-            mp.setOnErrorListener { _, _, _ ->
-                handleError()
-                true
-            }
-            mp.prepareAsync()
-        } catch (_: Exception) {
-            mp.release()
-            return false
+    /** يبدّل العنصر المحدد داخل قائمة ExoPlayer دون إنشاء مشغّل جديد. */
+    private fun selectCurrentAndPlay() {
+        val activePlayer = player
+        if (activePlayer == null) {
+            playCurrent()
+            return
         }
-        player = mp
-        prepared = false
+        val focusGranted = requestFocus()
+        playWhenReady = focusGranted
+        activePlayer.seekTo(queue.currentPosition, 0L)
+        activePlayer.playWhenReady = focusGranted
+        if (focusGranted) activePlayer.play() else activePlayer.pause()
+        if (focusGranted) startTicker() else stopTicker()
         publish()
-        return true
+    }
+
+    /** يعيد مزامنة قائمة ExoPlayer بعد إعادة الترتيب أو الحذف أو الإضافة. */
+    private fun refreshPlaylist(preservePosition: Boolean, autoPlay: Boolean) {
+        val activePlayer = player
+        if (activePlayer == null) {
+            if (autoPlay && queue.currentIndex != null) playCurrent() else publish()
+            return
+        }
+        if (queue.size == 0 || queue.currentPosition !in 0 until queue.size) {
+            stopPlayback()
+            return
+        }
+
+        val savedPosition = if (preservePosition) activePlayer.currentPosition.coerceAtLeast(0L) else 0L
+        val mediaItems = buildMediaItems()
+        if (mediaItems.isEmpty()) {
+            stopPlayback()
+            return
+        }
+
+        playWhenReady = autoPlay
+        prepared = false
+        activePlayer.setMediaItems(mediaItems, queue.currentPosition, savedPosition)
+        activePlayer.repeatMode = media3RepeatMode()
+        activePlayer.prepare()
+        activePlayer.playWhenReady = autoPlay
+        if (autoPlay) activePlayer.play() else activePlayer.pause()
+        publish()
+    }
+
+    private fun buildMediaItems(): List<MediaItem> =
+        queue.orderedIndices().mapNotNull { originalIndex ->
+            tracks.getOrNull(originalIndex)?.let { MediaItem.fromUri(it.uri) }
+        }
+
+    /** يترك ExoPlayer ينفذ التكرار بلا فجوة صوتية بين المقاطع. */
+    private fun media3RepeatMode(): Int = when (queue.repeat) {
+        RepeatMode.Off -> Player.REPEAT_MODE_OFF
+        RepeatMode.All -> Player.REPEAT_MODE_ALL
+        RepeatMode.One -> Player.REPEAT_MODE_ONE
+    }
+
+    /** @return true إن أنشأ ExoPlayer وبدأ التحضير، وإلا false. */
+    private fun startPlayer(): Boolean {
+        var created: ExoPlayer? = null
+        return try {
+            val exo = ExoPlayer.Builder(context)
+                .setAudioAttributes(media3AudioAttributes, false)
+                .setWakeMode(C.WAKE_MODE_LOCAL)
+                .build()
+            created = exo
+            player = exo
+            currentAudioSessionId = 0
+            exo.setHandleAudioBecomingNoisy(false)
+            exo.volume = volume
+            val generatedSessionId = runCatching { audioManager.generateAudioSessionId() }.getOrDefault(0)
+            if (generatedSessionId > 0) {
+                exo.setAudioSessionId(generatedSessionId)
+                currentAudioSessionId = generatedSessionId
+            }
+            exo.addListener(object : Player.Listener {
+                override fun onPlaybackStateChanged(playbackState: Int) {
+                    if (player !== exo) return
+                    when (playbackState) {
+                        Player.STATE_READY -> {
+                            prepared = true
+                            consecutiveErrors = 0
+                            if (playWhenReady) {
+                                exo.play()
+                                applySpeed()
+                                startTicker()
+                            }
+                            publish()
+                        }
+                        Player.STATE_ENDED -> {
+                            prepared = true
+                            publish()
+                            onCompleted()
+                        }
+                        Player.STATE_IDLE -> {
+                            prepared = false
+                            publish()
+                        }
+                        else -> publish()
+                    }
+                }
+
+                override fun onAudioSessionIdChanged(audioSessionId: Int) {
+                    if (player !== exo) return
+                    val nextSessionId = audioSessionId.coerceAtLeast(0)
+                    if (currentAudioSessionId > 0 && currentAudioSessionId != nextSessionId) {
+                        DeviceEqualizer.releaseSession(currentAudioSessionId)
+                    }
+                    currentAudioSessionId = nextSessionId
+                    publish()
+                }
+
+                override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                    if (player !== exo) return
+                    val index = exo.currentMediaItemIndex
+                    if (index in 0 until queue.size) queue.select(index)
+                    publish()
+                }
+
+                override fun onIsPlayingChanged(isPlaying: Boolean) {
+                    if (player !== exo) return
+                    if (isPlaying) startTicker()
+                    else if (!playWhenReady) stopTicker()
+                    publish()
+                }
+
+                override fun onPlayerError(error: PlaybackException) {
+                    if (player === exo) handleError()
+                }
+            })
+
+            prepared = false
+            val mediaItems = buildMediaItems()
+            if (mediaItems.isEmpty()) {
+                exo.release()
+                player = null
+                currentAudioSessionId = 0
+                return false
+            }
+            exo.setMediaItems(mediaItems, queue.currentPosition, 0L)
+            exo.repeatMode = media3RepeatMode()
+            exo.playWhenReady = playWhenReady
+            exo.setPlaybackParameters(PlaybackParameters(speed, 1f))
+            exo.prepare()
+            publish()
+            true
+        } catch (_: Exception) {
+            if (player === created) player = null
+            prepared = false
+            currentAudioSessionId = 0
+            runCatching { created?.release() }
+            false
+        }
     }
 
     private fun onCompleted() {
-        if (queue.next(auto = true) != null) playCurrent() else stopPlayback()
+        if (queue.next(auto = true) != null) {
+            refreshPlaylist(preservePosition = false, autoPlay = true)
+        } else {
+            stopPlayback()
+        }
     }
 
     /** خطأ أثناء التحضير أو التشغيل: نتخطى المقطع التالف. */
@@ -288,10 +508,7 @@ class PlayerController(
         if (advanceAfterFailure()) playCurrent()
     }
 
-    /**
-     * يسجّل فشل مقطع وينتقل للتالي.
-     * @return false إن تعطلت القائمة كلها أو انتهت (وقد أُوقف التشغيل).
-     */
+    /** @return false إن تعطلت القائمة كلها أو انتهت. */
     private fun advanceAfterFailure(): Boolean {
         consecutiveErrors++
         if (consecutiveErrors >= tracks.size || queue.next(auto = false) == null) {
@@ -310,19 +527,19 @@ class PlayerController(
     }
 
     private fun releasePlayer() {
-        player?.let {
-            it.setOnPreparedListener(null)
-            it.setOnCompletionListener(null)
-            it.setOnErrorListener(null)
-            it.release()
-        }
+        val old = player
         player = null
         prepared = false
+        DeviceEqualizer.releaseSession(currentAudioSessionId)
+        currentAudioSessionId = 0
+        runCatching { old?.release() }
     }
+
+    // ── Audio Focus ─────────────────────────────────────────────
 
     private fun requestFocus(): Boolean {
         val request = focusRequest ?: AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
-            .setAudioAttributes(audioAttributes)
+            .setAudioAttributes(platformAudioAttributes)
             .setOnAudioFocusChangeListener(focusListener)
             .build()
             .also { focusRequest = it }
@@ -332,6 +549,8 @@ class PlayerController(
     private fun abandonFocus() {
         focusRequest?.let { audioManager.abandonAudioFocusRequest(it) }
     }
+
+    // ── حالة الواجهة ────────────────────────────────────────────
 
     private fun startTicker() {
         if (ticker?.isActive == true) return
@@ -349,23 +568,31 @@ class PlayerController(
     }
 
     private fun publish() {
+        val orderedTracks = queue.orderedIndices().mapNotNull { tracks.getOrNull(it) }
         val track = queue.currentIndex?.let { tracks.getOrNull(it) }
-        val mp = player
-        val ready = prepared && mp != null
+        val activePlayer = player
+        val ready = prepared && activePlayer != null
+        val rawDuration = if (ready) activePlayer?.duration ?: 0L else track?.durationMs ?: 0L
+        val duration = rawDuration.takeIf { it >= 0L && it != C.TIME_UNSET } ?: 0L
         _state.value = PlayerState(
-            queue = tracks,
+            queue = orderedTracks,
             current = track,
-            isPlaying = ready && mp?.isPlaying == true,
-            positionMs = if (ready) mp?.currentPosition?.toLong() ?: 0L else 0L,
-            durationMs = if (ready) mp?.duration?.toLong() ?: 0L else track?.durationMs ?: 0L,
+            isPlaying = ready && activePlayer?.isPlaying == true,
+            positionMs = if (ready) activePlayer?.currentPosition?.coerceAtLeast(0L) ?: 0L else 0L,
+            durationMs = duration,
             shuffle = queue.shuffle,
             repeat = queue.repeat,
+            queuePosition = queue.currentPosition,
+            audioSessionId = currentAudioSessionId,
         )
     }
 
     private companion object {
         const val TICK_MS = 500L
-        const val RESTART_THRESHOLD_MS = 3_000
+        const val RESTART_THRESHOLD_MS = 3_000L
         const val DUCK_VOLUME = 0.3f
+        const val MIN_SPEED = 0.25f
+        const val MAX_SPEED = 3f
+        const val MAX_SLEEP_MINUTES = 24 * 60
     }
 }

@@ -191,7 +191,7 @@ fun GlowApp(settings: SettingsStore, modifier: Modifier = Modifier) {
                         onRescan = { rescan++ },
                         sleepEndsAt = sleepEndsAt,
                         onSleepTimer = { controller?.setSleepTimer(it) },
-                        audioSessionId = { controller?.audioSessionId ?: 0 },
+                        audioSessionId = playerState.audioSessionId,
                     )
                 } else if (open == null) {
                     LibraryScreen(
@@ -203,6 +203,10 @@ fun GlowApp(settings: SettingsStore, modifier: Modifier = Modifier) {
                         tab = libraryTab,
                         onRequestPermission = { launcher.launch(permissions) },
                         onPlay = { list, i -> connection.play(list, i) },
+                        onQueueTrack = { track, playNext ->
+                            if (playNext) controller?.playNext(listOf(track))
+                            else controller?.addToQueue(listOf(track))
+                        },
                         onOpen = { collection = it },
                         onOpenSettings = { showSettings = true },
                     )
@@ -270,6 +274,7 @@ fun GlowApp(settings: SettingsStore, modifier: Modifier = Modifier) {
             ) {
                 NowPlayingScreen(
                     state = playerState,
+                    audioSessionId = playerState.audioSessionId,
                     onClose = { showPlayer = false },
                     onSeek = { controller?.seekTo(it) },
                     onTogglePlay = { controller?.togglePlay() },
@@ -277,6 +282,10 @@ fun GlowApp(settings: SettingsStore, modifier: Modifier = Modifier) {
                     onPrevious = { controller?.previous() },
                     onShuffle = { controller?.setShuffle(!playerState.shuffle) },
                     onRepeat = { controller?.cycleRepeat() },
+                    onPlayQueueItem = { controller?.playQueueItem(it) },
+                    onMoveQueueItem = { from, to -> controller?.moveQueueItem(from, to) },
+                    onRemoveQueueItem = { controller?.removeQueueItem(it) },
+                    onClearUpcoming = { controller?.clearUpcoming() },
                 )
             }
         }

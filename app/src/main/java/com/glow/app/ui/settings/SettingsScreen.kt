@@ -1,9 +1,5 @@
 package com.glow.app.ui.settings
 
-import android.content.ActivityNotFoundException
-import android.content.Intent
-import android.media.audiofx.AudioEffect
-import android.widget.Toast
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -42,9 +38,9 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.clipRect
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -62,7 +58,7 @@ import com.glow.app.ui.theme.colorToHsv
 import com.glow.app.ui.theme.hsvColor
 import kotlinx.coroutines.delay
 
-private enum class Dlg { SPEED, SLEEP, SHORT }
+private enum class Dlg { SPEED, SLEEP, SHORT, EQUALIZER }
 
 /** شاشة الإعدادات على طراز Samsung: عنوان كبير وبطاقات مدوّرة مجمّعة بأقسام. */
 @Composable
@@ -72,11 +68,11 @@ fun SettingsScreen(
     onRescan: () -> Unit,
     sleepEndsAt: Long?,
     onSleepTimer: (Int) -> Unit,
-    audioSessionId: () -> Int,
+    audioSessionId: Int,
     modifier: Modifier = Modifier,
 ) {
-    val context = LocalContext.current
     val skin = LocalGlowSkin.current
+    val context = LocalContext.current
     var dlg by remember { mutableStateOf<Dlg?>(null) }
 
     var now by remember { mutableStateOf(System.currentTimeMillis()) }
@@ -117,18 +113,7 @@ fun SettingsScreen(
                 if (remainingMin == null) "متوقف" else "متبقٍ $remainingMin د",
             ) { dlg = Dlg.SLEEP }
             Divider()
-            Item(IconKind.Equalizer, "المعادل الصوتي", "فتح") {
-                val intent = Intent(AudioEffect.ACTION_DISPLAY_AUDIO_EFFECT_CONTROL_PANEL).apply {
-                    putExtra(AudioEffect.EXTRA_AUDIO_SESSION, audioSessionId())
-                    putExtra(AudioEffect.EXTRA_PACKAGE_NAME, context.packageName)
-                    putExtra(AudioEffect.EXTRA_CONTENT_TYPE, AudioEffect.CONTENT_TYPE_MUSIC)
-                }
-                try {
-                    context.startActivity(intent)
-                } catch (_: ActivityNotFoundException) {
-                    Toast.makeText(context, "لا يوجد معادل على هذا الجهاز", Toast.LENGTH_SHORT).show()
-                }
-            }
+            Item(IconKind.Equalizer, "المعادل الصوتي", "تحكم متقدم") { dlg = Dlg.EQUALIZER }
         }
 
         Section("المكتبة") {
@@ -190,6 +175,11 @@ fun SettingsScreen(
             store.skipShortSeconds,
             { store.updateSkipShortSeconds(it) },
         ) { dlg = null }
+
+        Dlg.EQUALIZER -> EqualizerSheet(
+            audioSessionId = audioSessionId,
+            onDismiss = { dlg = null },
+        )
 
         null -> Unit
     }

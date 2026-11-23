@@ -3,6 +3,7 @@ package com.glow.app.ui.nowplaying
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -10,7 +11,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -21,7 +27,10 @@ import androidx.compose.ui.unit.sp
 import com.glow.app.media.PlayerState
 import com.glow.app.ui.common.AlbumArt
 import com.glow.app.ui.common.GlowTopBar
+import com.glow.app.ui.common.GlowIcon
+import com.glow.app.ui.common.GlowIconTap
 import com.glow.app.ui.common.IconKind
+import com.glow.app.ui.settings.EqualizerSheet
 import com.glow.app.ui.common.rememberArtPalette
 import com.glow.app.ui.theme.LocalGlowSkin
 
@@ -29,6 +38,7 @@ import com.glow.app.ui.theme.LocalGlowSkin
 @Composable
 fun NowPlayingScreen(
     state: PlayerState,
+    audioSessionId: Int,
     onClose: () -> Unit,
     onSeek: (Long) -> Unit,
     onTogglePlay: () -> Unit,
@@ -36,9 +46,15 @@ fun NowPlayingScreen(
     onPrevious: () -> Unit,
     onShuffle: () -> Unit,
     onRepeat: () -> Unit,
+    onPlayQueueItem: (Int) -> Unit,
+    onMoveQueueItem: (Int, Int) -> Unit,
+    onRemoveQueueItem: (Int) -> Unit,
+    onClearUpcoming: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val skin = LocalGlowSkin.current
+    var showQueue by remember { mutableStateOf(false) }
+    var showEqualizer by remember { mutableStateOf(false) }
     val track = state.current ?: return
     val palette = rememberArtPalette(track)
     val contentColor = playerContentColor(palette, skin)
@@ -70,6 +86,18 @@ fun NowPlayingScreen(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(top = 4.dp),
             )
+            Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                GlowIconTap("فتح قائمة التشغيل", { showQueue = true }, size = 44.dp) {
+                    GlowIcon(IconKind.Playlist, skin.accentText, 22.dp)
+                }
+                TextButton(onClick = { showQueue = true }) {
+                    Text("قائمة التشغيل · ${state.queue.size}", color = skin.accentText, fontSize = 13.sp)
+                }
+                Spacer(Modifier.weight(1f))
+                GlowIconTap("فتح المعادل الصوتي", { showEqualizer = true }, size = 44.dp) {
+                    GlowIcon(IconKind.Equalizer, skin.accentText, 22.dp)
+                }
+            }
             Spacer(Modifier.weight(1f))
             NowPlayingControls(
                 state = state,
@@ -83,5 +111,23 @@ fun NowPlayingScreen(
             )
             Spacer(Modifier.height(24.dp))
         }
+    }
+
+    if (showEqualizer) {
+        EqualizerSheet(
+            audioSessionId = audioSessionId,
+            onDismiss = { showEqualizer = false },
+        )
+    }
+
+    if (showQueue) {
+        QueueSheet(
+            state = state,
+            onDismiss = { showQueue = false },
+            onPlayAt = onPlayQueueItem,
+            onMove = onMoveQueueItem,
+            onRemove = onRemoveQueueItem,
+            onClearUpcoming = onClearUpcoming,
+        )
     }
 }
