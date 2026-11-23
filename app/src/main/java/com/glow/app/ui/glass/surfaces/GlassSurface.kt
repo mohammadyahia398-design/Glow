@@ -75,7 +75,15 @@ fun GlassSurface(
 
     var size by remember { mutableStateOf(IntSize.Zero) }
     val blur = rememberGlassBlurEffect(style, tier)
-    val effect = rememberGlassRefractionEffect(style, tier, shape, size, blur)
+    // يطابق الانكسار اتجاه الضوء المحيطي المستخدم كأساس للمعان السطح.
+    val effect = rememberGlassRefractionEffect(
+        style = style,
+        tier = tier,
+        shape = shape,
+        size = size,
+        blur = blur,
+        light = ambientLight,
+    )
 
     // الضوء يُقرأ أثناء الرسم عبر هذه الدالة، فتحريكه لا يعيد التركيب.
     val lightProvider: () -> LightSource = remember(interaction, ambientLight) {

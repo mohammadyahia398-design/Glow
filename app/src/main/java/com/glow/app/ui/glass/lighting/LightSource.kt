@@ -30,7 +30,10 @@ data class LightSource(
     val intensity: Float = 1f,
 ) {
     init {
-        require(intensity in 0f..2f) { "intensity must be in 0..2" }
+        require(angleDegrees.isFinite()) { "angleDegrees must be finite" }
+        require(intensity.isFinite() && intensity in 0f..2f) {
+            "intensity must be finite and in 0..2"
+        }
     }
 
     /** متجه وحدة يشير من السطح نحو المصدر. */
@@ -46,8 +49,10 @@ data class LightSource(
      * @param normal العمودي الخارج من الحافة، لا يشترط أن يكون وحدة.
      */
     fun facing(normal: Offset): Float {
+        // لا تسمح لقيم هندسية تالفة بإدخال NaN إلى طبقة الرسم أو الشيدر.
+        if (!normal.x.isFinite() || !normal.y.isFinite()) return 0f
         val length = sqrt(normal.x * normal.x + normal.y * normal.y)
-        if (length < EPSILON) return 0f
+        if (!length.isFinite() || length < EPSILON) return 0f
         val light = towardLight
         val dot = (normal.x / length) * light.x + (normal.y / length) * light.y
         return dot.coerceIn(-1f, 1f)
@@ -62,6 +67,7 @@ data class LightSource(
 
     /** يمزج مع مصدر آخر عبر أقصر قوس زاوي. */
     fun lerp(other: LightSource, fraction: Float): LightSource {
+        require(fraction.isFinite()) { "fraction must be finite" }
         val f = fraction.coerceIn(0f, 1f)
         val delta = ((other.angleDegrees - angleDegrees + 540f) % 360f) - 180f
         return LightSource(
@@ -78,6 +84,13 @@ data class LightSource(
 
         /** ينشئ مصدراً من متجه اتجاه (لا يشترط أن يكون وحدة). */
         fun fromVector(direction: Offset, intensity: Float = 1f): LightSource {
+            require(direction.x.isFinite() && direction.y.isFinite()) {
+                "direction components must be finite"
+            }
+            // LightSource validates intensity as well, including the zero-vector path.
+            require(intensity.isFinite() && intensity in 0f..2f) {
+                "intensity must be finite and in 0..2"
+            }
             val length = sqrt(direction.x * direction.x + direction.y * direction.y)
             if (length < EPSILON) return Default.copy(intensity = intensity)
             val degrees = Math.toDegrees(atan2(direction.y, direction.x).toDouble()).toFloat()
@@ -115,6 +128,11 @@ class LightState(private val rest: LightSource = LightSource.Default) {
      * @param boost زيادة الشدة أثناء اللمس.
      */
     fun pointToward(touch: Offset, center: Offset, boost: Float = 0.25f) {
+        require(boost.isFinite()) { "boost must be finite" }
+        // أحداث اللمس قد تصل أحياناً بقيم غير صالحة من تحويلات مخصصة؛ تجاهلها بأمان.
+        if (!touch.x.isFinite() || !touch.y.isFinite() ||
+            !center.x.isFinite() || !center.y.isFinite()
+        ) return
         val dx = touch.x - center.x
         val dy = touch.y - center.y
         if (sqrt(dx * dx + dy * dy) < 1f) return

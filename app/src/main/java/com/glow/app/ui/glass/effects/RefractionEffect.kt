@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.glow.app.ui.glass.core.GlassStyle
 import com.glow.app.ui.glass.core.GlassTier
+import com.glow.app.ui.glass.lighting.LightSource
 import kotlin.math.min
 
 /** أقصى عرض لشريط الانكسار عند الحافة. */
@@ -76,11 +77,12 @@ fun rememberGlassRefractionEffect(
     shape: Shape,
     size: IntSize,
     blur: RenderEffect?,
+    light: LightSource = LightSource.Default,
 ): RenderEffect? {
     val density = LocalDensity.current
     val layoutDirection = LocalLayoutDirection.current
-    return remember(style, tier, shape, size, blur, density, layoutDirection) {
-        createGlassRefractionEffect(style, tier, shape, size, blur, density, layoutDirection)
+    return remember(style, tier, shape, size, blur, density, layoutDirection, light) {
+        createGlassRefractionEffect(style, tier, shape, size, blur, density, layoutDirection, light)
     }
 }
 
@@ -93,6 +95,7 @@ fun createGlassRefractionEffect(
     blur: RenderEffect?,
     density: Density,
     layoutDirection: LayoutDirection,
+    light: LightSource = LightSource.Default,
 ): RenderEffect? {
     val refraction = style.effectiveRefraction(tier)
     if (refraction <= 0f || size.width <= 0 || size.height <= 0) return blur
@@ -119,6 +122,8 @@ fun createGlassRefractionEffect(
         edgeWidthPx = min(minDimension * 0.5f, maxEdgePx),
         strengthPx = refraction * maxShiftPx,
         dispersion = refraction * MAX_DISPERSION,
+        blurRadiusPx = with(density) { style.effectiveBlur(tier).toPx() },
+        light = light,
     )
 }
 
@@ -131,6 +136,8 @@ private fun applyRefraction(
     edgeWidthPx: Float,
     strengthPx: Float,
     dispersion: Float,
+    blurRadiusPx: Float,
+    light: LightSource,
 ): RenderEffect {
     val shader = RuntimeShader(RefractionShader.SOURCE)
     shader.setFloatUniform(RefractionShader.UNIFORM_SIZE, widthPx, heightPx)
@@ -138,16 +145,35 @@ private fun applyRefraction(
     shader.setFloatUniform(RefractionShader.UNIFORM_EDGE_WIDTH, edgeWidthPx)
     shader.setFloatUniform(RefractionShader.UNIFORM_STRENGTH, strengthPx)
     shader.setFloatUniform(RefractionShader.UNIFORM_DISPERSION, dispersion)
+    val direction = light.towardLight
+    shader.setFloatUniform(
+        RefractionShader.UNIFORM_LIGHT_DIRECTION,
+        direction.x,
+        direction.y,
+    )
+    shader.setFloatUniform(
+        RefractionShader.UNIFORM_LIGHT_INTENSITY,
+        light.intensity.coerceIn(0f, 2f),
+    )
 
     val shaderEffect = AndroidRenderEffect.createRuntimeShaderEffect(
         shader,
         RefractionShader.UNIFORM_CONTENT,
     )
 
+    // نبني Blur على Android مباشرة حتى تكون سلسلة التأثيرات على منصة واحدة.
     // createChainEffect(outer, inner): يُطبَّق inner أولاً ثم outer.
-    // نريد التمويه أولاً ثم الانكسار على الصورة المموّهة.
-    val chained = if (blur != null) {
-        AndroidRenderEffect.createChainEffect(shaderEffect, blur.asAndroidRenderEffect())
+    val nativeBlur = if (blur != null && blurRadiusPx > 0f) {
+        AndroidRenderEffect.createBlurEffect(
+            blurRadiusPx,
+            blurRadiusPx,
+            android.graphics.Shader.TileMode.MIRROR,
+        )
+    } else {
+        null
+    }
+    val chained = if (nativeBlur != null) {
+        AndroidRenderEffect.createChainEffect(shaderEffect, nativeBlur)
     } else {
         shaderEffect
     }

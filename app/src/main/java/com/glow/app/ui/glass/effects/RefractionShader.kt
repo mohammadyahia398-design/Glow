@@ -21,6 +21,8 @@ object RefractionShader {
     const val UNIFORM_EDGE_WIDTH = "uEdgeWidth"
     const val UNIFORM_STRENGTH = "uStrength"
     const val UNIFORM_DISPERSION = "uDispersion"
+    const val UNIFORM_LIGHT_DIRECTION = "uLightDirection"
+    const val UNIFORM_LIGHT_INTENSITY = "uLightIntensity"
 
     const val SOURCE: String = """
 uniform shader content;
@@ -29,6 +31,8 @@ uniform float uCornerRadius;
 uniform float uEdgeWidth;
 uniform float uStrength;
 uniform float uDispersion;
+uniform float2 uLightDirection;
+uniform float uLightIntensity;
 
 float roundedRectSdf(float2 p) {
     float2 halfSize = uSize * 0.5;
@@ -72,11 +76,28 @@ half4 main(float2 fragCoord) {
     half4 mir = content.eval(clampCoord(mp));
     half4 col = mix(refr, mir, half(k * 0.85));
 
-    // لمعة اتجاهية (الضوء من أعلى اليسار) مع توهّج فرنل خفيف عند الحافة.
-    float dd = dot(outward, normalize(float2(-0.6, -0.8)));
-    float band = pow(u, 4.0);
-    float lit = band * (max(dd, 0.0) * 0.45 + max(-dd, 0.0) * 0.26) + 0.05 * u * u;
-    col.rgb += half3(half(lit)) * col.a;
+    // اتجاه الضوء يأتي من LightSource في Compose بدلاً من قيمة ثابتة داخل الشيدر.
+    float lightLength = length(uLightDirection);
+    float2 lightDir = lightLength > 0.0001
+        ? uLightDirection / lightLength
+        : float2(-0.70710678, -0.70710678);
+    float lightFacing = dot(outward, lightDir);
+    float frontLight = max(lightFacing, 0.0);
+    float backLight = max(-lightFacing, 0.0);
+
+    // تقريب Schlick: تزداد الانعكاسية قرب حافة العدسة، وتبقى هادئة في الوسط.
+    float viewCosine = sqrt(max(1.0 - u * u, 0.0));
+    float grazing = 1.0 - viewCosine;
+    float fresnel = 0.04 + 0.96 * pow(grazing, 5.0);
+    float rimBand = pow(u, 3.2);
+    float directional = frontLight * 0.58 + backLight * 0.22;
+    float specular = rimBand * directional * fresnel * uLightIntensity;
+    float softRim = 0.035 * u * u * uLightIntensity;
+    col.rgb += half3(half(specular + softRim)) * col.a;
+
+    // تدرج ضوئي داخلي خفيف يوضح تحدب العدسة دون غسل ألوان الغلاف.
+    float innerGlow = pow(max(frontLight, 0.0), 2.0) * pow(u, 1.8) * 0.035;
+    col.rgb += half3(half(innerGlow)) * col.a;
     return col;
 }
 """

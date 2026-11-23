@@ -45,21 +45,34 @@ object GlassCapabilities {
      * @param isLowRamDevice جهاز منخفض الذاكرة: يُجبر على [GlassTier.Fallback].
      * @param enabled مفتاح تعطيل يدوي (مثلاً من الإعدادات).
      * @param ceiling سقف أعلى للمستوى، مفيد للاختبار أو لتوفير البطارية.
+     * @param memoryClassMb فئة ذاكرة التطبيق بالميغابايت؛ null يعني عدم توفر القياس.
      */
     fun resolveTier(
         sdkInt: Int,
         isLowRamDevice: Boolean,
         enabled: Boolean = true,
         ceiling: GlassTier = GlassTier.Liquid,
+        memoryClassMb: Int? = null,
     ): GlassTier {
+        require(memoryClassMb == null || memoryClassMb > 0) {
+            "memoryClassMb must be positive when provided"
+        }
         if (!enabled || isLowRamDevice) return GlassTier.Fallback
+        if (memoryClassMb != null && memoryClassMb <= 128) return GlassTier.Fallback
 
         val bySdk = when {
             sdkInt >= REFRACTION_MIN_SDK -> GlassTier.Liquid
             sdkInt >= BLUR_MIN_SDK -> GlassTier.Frosted
             else -> GlassTier.Fallback
         }
-        return if (bySdk.ordinal <= ceiling.ordinal) bySdk else ceiling
+        // الأجهزة ذات فئة الذاكرة المحدودة تحصل على Blur دون AGSL لتقليل كلفة الطبقات.
+        val memoryCeiling = if (memoryClassMb != null && memoryClassMb <= 192) {
+            GlassTier.Frosted
+        } else {
+            GlassTier.Liquid
+        }
+        val effectiveCeiling = if (memoryCeiling.ordinal < ceiling.ordinal) memoryCeiling else ceiling
+        return if (bySdk.ordinal <= effectiveCeiling.ordinal) bySdk else effectiveCeiling
     }
 
     /** يكتشف المستوى من الجهاز الفعلي. */
@@ -75,6 +88,7 @@ object GlassCapabilities {
             isLowRamDevice = activityManager?.isLowRamDevice ?: false,
             enabled = enabled,
             ceiling = ceiling,
+            memoryClassMb = activityManager?.memoryClass,
         )
     }
 }

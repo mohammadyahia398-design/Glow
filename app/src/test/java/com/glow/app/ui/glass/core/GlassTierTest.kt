@@ -14,11 +14,13 @@ class GlassTierTest {
         lowRam: Boolean = false,
         enabled: Boolean = true,
         ceiling: GlassTier = GlassTier.Liquid,
+        memoryClassMb: Int? = null,
     ): GlassTier = GlassCapabilities.resolveTier(
         sdkInt = sdk,
         isLowRamDevice = lowRam,
         enabled = enabled,
         ceiling = ceiling,
+        memoryClassMb = memoryClassMb,
     )
 
     // ── الحدود الدنيا للإصدارات ─────────────────────────────────────
@@ -77,6 +79,27 @@ class GlassTierTest {
         assertThat(tier(35, enabled = false)).isEqualTo(GlassTier.Fallback)
     }
 
+
+    @Test
+    fun very_small_memory_class_forces_fallback() {
+        assertThat(tier(35, memoryClassMb = 128)).isEqualTo(GlassTier.Fallback)
+    }
+
+    @Test
+    fun constrained_memory_caps_liquid_at_frosted() {
+        assertThat(tier(35, memoryClassMb = 192)).isEqualTo(GlassTier.Frosted)
+    }
+
+    @Test
+    fun memory_class_above_threshold_keeps_liquid() {
+        assertThat(tier(35, memoryClassMb = 193)).isEqualTo(GlassTier.Liquid)
+    }
+
+    @Test
+    fun memory_cap_never_upgrades_api_32_to_liquid() {
+        assertThat(tier(32, memoryClassMb = 192)).isEqualTo(GlassTier.Frosted)
+    }
+
     // ── السقف الأعلى ───────────────────────────────────────────────
 
     @Test
@@ -120,4 +143,9 @@ class GlassTierTest {
             .containsExactly(GlassTier.Fallback, GlassTier.Frosted, GlassTier.Liquid)
             .inOrder()
     }
+    @Test(expected = IllegalArgumentException::class)
+    fun non_positive_memory_class_is_rejected() {
+        tier(35, memoryClassMb = 0)
+    }
+
 }
