@@ -213,8 +213,11 @@ fun GlowApp(settings: SettingsStore, modifier: Modifier = Modifier) {
                         onBack = { collection = null },
                         onPlay = { i -> connection.play(open.tracks, i) },
                         onShuffle = {
-                            controller?.setShuffle(true)
-                            connection.play(open.tracks, Random.nextInt(open.tracks.size))
+                            // Random.nextInt(0) يرمي استثناءً إن كانت المجموعة فارغة.
+                            if (open.tracks.isNotEmpty()) {
+                                controller?.setShuffle(true)
+                                connection.play(open.tracks, Random.nextInt(open.tracks.size))
+                            }
                         },
                     )
                 }

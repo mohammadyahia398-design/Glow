@@ -60,6 +60,8 @@ class PlayerController(
     private val focusListener = AudioManager.OnAudioFocusChangeListener { change ->
         when (change) {
             AudioManager.AUDIOFOCUS_LOSS -> {
+                // يُعاد مستوى الصوت كي لا يبقى مخفَّضاً (ducking) عند الاستئناف اليدوي لاحقاً.
+                setVolumeLevel(1f)
                 resumeOnFocusGain = false
                 pauseInternal()
                 abandonFocus()

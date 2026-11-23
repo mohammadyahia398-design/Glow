@@ -4,8 +4,12 @@ import android.app.Notification
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.ServiceInfo
+import android.media.AudioManager
 import android.media.MediaMetadata
 import android.media.session.MediaSession
 import android.media.session.PlaybackState
@@ -13,6 +17,7 @@ import android.os.Binder
 import android.os.Build
 import android.os.IBinder
 import android.os.SystemClock
+import androidx.core.content.ContextCompat
 import com.glow.app.MainActivity
 import kotlin.math.abs
 import kotlinx.coroutines.CoroutineScope
@@ -41,6 +46,17 @@ class GlowMediaSessionService : Service() {
     private lateinit var notifier: PlaybackNotifier
     private lateinit var notificationManager: NotificationManager
 
+    /** يوقف التشغيل مؤقتاً عند فصل سماعات الأذن أو انقطاع البلوتوث. */
+    private val noisyReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action == AudioManager.ACTION_AUDIO_BECOMING_NOISY &&
+                controller.state.value.isPlaying
+            ) {
+                controller.pause()
+            }
+        }
+    }
+
     private var isForeground = false
     private var lastKey: Pair<Long?, Boolean>? = null
 
@@ -62,6 +78,12 @@ class GlowMediaSessionService : Service() {
         notifier.ensureChannel()
 
         controller = PlayerController(this, scope)
+        ContextCompat.registerReceiver(
+            this,
+            noisyReceiver,
+            IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY),
+            ContextCompat.RECEIVER_NOT_EXPORTED,
+        )
 
         session = MediaSession(this, SESSION_TAG).apply {
             setSessionActivity(openAppIntent())
@@ -118,6 +140,7 @@ class GlowMediaSessionService : Service() {
     }
 
     override fun onDestroy() {
+        unregisterReceiver(noisyReceiver)
         scope.cancel()
         session.isActive = false
         session.release()

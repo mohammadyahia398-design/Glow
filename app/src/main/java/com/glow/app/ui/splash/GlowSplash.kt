@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
@@ -47,9 +48,11 @@ private val BackOut = CubicBezierEasing(0.34f, 1.56f, 0.64f, 1f)
 fun GlowSplash(onFinished: () -> Unit, modifier: Modifier = Modifier) {
     val bg = if (isSystemInDarkTheme()) Color(0xFF0B0B0D) else Color(0xFFECECEC)
     val progress = remember { Animatable(0f) }
+    // يضمن استدعاء أحدث دالة حتى لو أُعيد تركيب الشاشة أثناء الحركة.
+    val currentOnFinished = rememberUpdatedState(onFinished)
     LaunchedEffect(Unit) {
         progress.animateTo(1f, tween(TotalMs.toInt(), easing = LinearEasing))
-        onFinished()
+        currentOnFinished.value()
     }
     val wordmark = painterResource(R.drawable.ic_glow_wordmark)
 
