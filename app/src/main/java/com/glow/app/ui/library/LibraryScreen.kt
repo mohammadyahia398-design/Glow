@@ -80,10 +80,11 @@ enum class LibraryTab(val label: String, val icon: IconKind) {
     Genres("الأنواع", IconKind.Note),
     Spotify("Spotify", IconKind.Note),
     Favorites("المفضلة", IconKind.Heart),
-    Playlists("القوائم", IconKind.Playlist);
+    Playlists("القوائم", IconKind.Playlist),
+    VocalIsolation("عزل الصوت", IconKind.Note);
 
     companion object {
-        val barTabs: List<LibraryTab> = listOf(Tracks, Albums, Artists, Favorites, Playlists)
+        val barTabs: List<LibraryTab> = listOf(Tracks, Albums, Artists, Favorites, Playlists, VocalIsolation)
     }
 }
 

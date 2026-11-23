@@ -67,6 +67,7 @@ import com.glow.app.ui.library.LibraryScreen
 import com.glow.app.ui.nowplaying.ArtMiniPlayer
 import com.glow.app.ui.nowplaying.ArtMiniPlayerHeight
 import com.glow.app.ui.nowplaying.NowPlayingScreen
+import com.glow.app.ui.vocal.VocalIsolationScreen
 import com.glow.app.ui.theme.LocalGlowSkin
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlin.random.Random
@@ -193,6 +194,8 @@ fun GlowApp(settings: SettingsStore, modifier: Modifier = Modifier) {
                         onSleepTimer = { controller?.setSleepTimer(it) },
                         audioSessionId = playerState.audioSessionId,
                     )
+                } else if (open == null && libraryTab == LibraryTab.VocalIsolation) {
+                    VocalIsolationScreen(Modifier.fillMaxSize())
                 } else if (open == null) {
                     LibraryScreen(
                         tracks = visibleTracks,
