@@ -18,6 +18,23 @@ class VocalIsolationClient(private val context: Context) {
     data class Job(val id: String, val status: String)
     data class Progress(val status: String, val ready: Boolean)
 
+    suspend fun checkHealth(baseUrl: String): Unit = withContext(Dispatchers.IO) {
+        val c = (URL(normalized(baseUrl) + "/health").openConnection() as HttpURLConnection).apply {
+            requestMethod = "GET"
+            connectTimeout = 10_000
+            readTimeout = 15_000
+            setRequestProperty("Accept", "application/json")
+        }
+        try {
+            val body = readJson(c)
+            if (c.responseCode !in 200..299 || !body.optBoolean("ok")) {
+                error(body.optString("error").ifBlank { "خادم Glow لا يستجيب بصورة صحيحة." })
+            }
+        } finally {
+            c.disconnect()
+        }
+    }
+
     suspend fun separate(baseUrl: String, source: Uri, displayName: String): Job = withContext(Dispatchers.IO) {
         val endpoint = normalized(baseUrl) + "/v1/separate"
         val boundary = "Glow-${UUID.randomUUID()}"
@@ -43,23 +60,39 @@ class VocalIsolationClient(private val context: Context) {
             val body = readJson(connection)
             val id = body.optString("predictionId")
             if (connection.responseCode !in 200..299 || id.isBlank()) {
-                error(body.optString("error", "تعذّر بدء معالجة الصوت (${connection.responseCode})."))
+                val detail = body.optString("error", "تعذّر بدء معالجة الصوت (${connection.responseCode}).")
+                error(
+                    when (connection.responseCode) {
+                        429 -> "وصل الخادم إلى حد الطلبات المسموح به. انتظر قبل المحاولة مجدداً."
+                        413 -> "حجم الملف يتجاوز الحد المسموح به (50 ميجابايت)."
+                        503 -> "خادم المعالجة غير مكتمل الإعداد. تحقّق من سر Replicate في Cloudflare."
+                        else -> detail
+                    },
+                )
             }
             Job(id, body.optString("status", "starting"))
-        } finally { connection.disconnect() }
+        } finally {
+            connection.disconnect()
+        }
     }
 
     suspend fun awaitResult(baseUrl: String, id: String, onStatus: (String) -> Unit): File = withContext(Dispatchers.IO) {
         val deadline = System.currentTimeMillis() + 30 * 60 * 1000L
         while (System.currentTimeMillis() < deadline) {
             val c = (URL(normalized(baseUrl) + "/v1/predictions/" + id).openConnection() as HttpURLConnection).apply {
-                connectTimeout = 15_000; readTimeout = 30_000; setRequestProperty("Accept", "application/json")
+                connectTimeout = 15_000
+                readTimeout = 30_000
+                setRequestProperty("Accept", "application/json")
             }
             val result = try {
                 val body = readJson(c)
-                if (c.responseCode !in 200..299) error(body.optString("error", "تعذّر التحقق من حالة المعالجة."))
+                if (c.responseCode !in 200..299) {
+                    error(body.optString("error", "تعذّر التحقق من حالة المعالجة."))
+                }
                 Progress(body.optString("status", "processing"), body.optBoolean("audioReady"))
-            } finally { c.disconnect() }
+            } finally {
+                c.disconnect()
+            }
             onStatus(result.status)
             when (result.status.lowercase()) {
                 "succeeded" -> if (result.ready) return@withContext download(baseUrl, id)
@@ -73,33 +106,61 @@ class VocalIsolationClient(private val context: Context) {
 
     suspend fun cancel(baseUrl: String, id: String) = withContext(Dispatchers.IO) {
         val c = (URL(normalized(baseUrl) + "/v1/predictions/" + id + "/cancel").openConnection() as HttpURLConnection).apply {
-            requestMethod = "POST"; connectTimeout = 10_000; readTimeout = 15_000
+            requestMethod = "POST"
+            connectTimeout = 10_000
+            readTimeout = 15_000
         }
-        try { c.inputStream?.close() } catch (_: Exception) { try { c.errorStream?.close() } catch (_: Exception) {} }
-        finally { c.disconnect() }
+        try {
+            val body = readJson(c)
+            if (c.responseCode !in 200..299) {
+                error(body.optString("error", "تعذّر إلغاء المعالجة."))
+            }
+        } finally {
+            c.disconnect()
+        }
     }
 
     private fun download(baseUrl: String, id: String): File {
         val c = (URL(normalized(baseUrl) + "/v1/predictions/" + id + "/audio").openConnection() as HttpURLConnection).apply {
-            connectTimeout = 20_000; readTimeout = 180_000
+            connectTimeout = 20_000
+            readTimeout = 180_000
         }
         try {
-            if (c.responseCode !in 200..299) error("تعذّر تنزيل ملف الصوت الناتج (${c.responseCode}).")
+            if (c.responseCode !in 200..299) {
+                val body = readJson(c)
+                error(body.optString("error", "تعذّر تنزيل ملف الصوت الناتج (${c.responseCode})."))
+            }
             val dir = File(context.getExternalFilesDir(null) ?: context.filesDir, "Glow/Vocals").apply { mkdirs() }
             val target = File(dir, "Glow-Vocals-${System.currentTimeMillis()}.wav")
-            BufferedInputStream(c.inputStream).use { input -> BufferedOutputStream(target.outputStream()).use { output -> input.copyTo(output, 64 * 1024) } }
-            if (!target.exists() || target.length() < 44) { target.delete(); error("الملف الصوتي الناتج غير صالح أو فارغ.") }
+            BufferedInputStream(c.inputStream).use { input ->
+                BufferedOutputStream(target.outputStream()).use { output ->
+                    input.copyTo(output, 64 * 1024)
+                }
+            }
+            if (!target.exists() || target.length() < 44) {
+                target.delete()
+                error("الملف الصوتي الناتج غير صالح أو فارغ.")
+            }
             return target
-        } finally { c.disconnect() }
+        } finally {
+            c.disconnect()
+        }
     }
 
     private fun readJson(c: HttpURLConnection): JSONObject {
         val stream = if (c.responseCode in 200..299) c.inputStream else c.errorStream
         val text = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
-        return try { JSONObject(text) } catch (_: Exception) { JSONObject().put("error", "استجابة غير مفهومة من الخادم.") }
+        return try {
+            JSONObject(text)
+        } catch (_: Exception) {
+            JSONObject().put("error", "استجابة غير مفهومة من الخادم.")
+        }
     }
+
     private fun normalized(value: String) = value.trim().trimEnd('/').also {
         require(it.startsWith("https://")) { "أدخل عنوان Backend صالحاً يبدأ بـ https://" }
     }
-    private fun safeName(value: String) = value.replace(Regex("[^A-Za-z0-9._-]"), "_").take(80).ifBlank { "audio" }
+
+    private fun safeName(value: String) =
+        value.replace(Regex("[^A-Za-z0-9._-]"), "_").take(80).ifBlank { "audio" }
 }
