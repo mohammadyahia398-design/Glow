@@ -19,6 +19,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -59,8 +60,12 @@ fun LiquidSlider(
     backdrop: Backdrop,
     modifier: Modifier = Modifier,
     accentColor: Color = Color.Unspecified,
-    trackColor: Color = Color.Unspecified
+    trackColor: Color = Color.Unspecified,
+    onValueChangeFinished: (() -> Unit)? = null
 ) {
+    // أحدث نسخة من الدوال: المنزلق يُنشأ مرة واحدة فلا يجوز أن يحتفظ بنسخة قديمة منها.
+    val currentOnValueChange by rememberUpdatedState(onValueChange)
+    val currentOnFinished by rememberUpdatedState(onValueChangeFinished)
     val isLightTheme = !isSystemInDarkTheme()
     val resolvedAccent =
         if (accentColor.isSpecified) accentColor
@@ -93,15 +98,16 @@ fun LiquidSlider(
                 onDragStarted = {},
                 onDragStopped = {
                     if (didDrag) {
-                        onValueChange(targetValue)
+                        currentOnValueChange(targetValue)
                     }
+                    currentOnFinished?.invoke()
                 },
                 onDrag = { _, dragAmount ->
                     if (!didDrag) {
                         didDrag = dragAmount.x != 0f
                     }
                     val delta = (valueRange.endInclusive - valueRange.start) * (dragAmount.x / trackWidth)
-                    onValueChange(
+                    currentOnValueChange(
                         if (isLtr) (targetValue + delta).coerceIn(valueRange)
                         else (targetValue - delta).coerceIn(valueRange)
                     )
@@ -130,7 +136,8 @@ fun LiquidSlider(
                                 else valueRange.endInclusive - delta)
                                     .coerceIn(valueRange)
                             dampedDragAnimation.animateToValue(targetValue)
-                            onValueChange(targetValue)
+                            currentOnValueChange(targetValue)
+                            currentOnFinished?.invoke()
                         }
                     }
                     .height(6f.dp)

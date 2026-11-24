@@ -24,12 +24,15 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.glow.app.liquid.backdrop.backdrops.layerBackdrop
+import com.glow.app.liquid.backdrop.backdrops.rememberLayerBackdrop
 import com.glow.app.media.PlayerState
 import com.glow.app.ui.common.AlbumArt
 import com.glow.app.ui.common.GlowTopBar
 import com.glow.app.ui.common.GlowIcon
 import com.glow.app.ui.common.GlowIconTap
 import com.glow.app.ui.common.IconKind
+import com.glow.app.ui.glass.core.rememberGlassTier
 import com.glow.app.ui.settings.EqualizerSheet
 import com.glow.app.ui.common.rememberArtPalette
 import com.glow.app.ui.theme.LocalGlowSkin
@@ -55,12 +58,20 @@ fun NowPlayingScreen(
     val skin = LocalGlowSkin.current
     var showQueue by remember { mutableStateOf(false) }
     var showEqualizer by remember { mutableStateOf(false) }
+    // الزجاج السائل (أندرويد 13+): الخلفية الحيّة هي ما تنكسر خلف الشريط والأزرار.
+    val useGlass = rememberGlassTier().supportsRefraction
+    val liquidBackdrop = rememberLayerBackdrop()
     val track = state.current ?: return
     val palette = rememberArtPalette(track)
     val contentColor = playerContentColor(palette, skin)
 
     Box(modifier.fillMaxSize()) {
-        AnimatedArtBackground(palette, Modifier.matchParentSize())
+        AnimatedArtBackground(
+            palette,
+            Modifier
+                .matchParentSize()
+                .then(if (useGlass) Modifier.layerBackdrop(liquidBackdrop) else Modifier),
+        )
         Column(
             Modifier.fillMaxSize().navigationBarsPadding().padding(horizontal = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -108,6 +119,7 @@ fun NowPlayingScreen(
                 onPrevious = onPrevious,
                 onShuffle = onShuffle,
                 onRepeat = onRepeat,
+                liquidBackdrop = if (useGlass) liquidBackdrop else null,
             )
             Spacer(Modifier.height(24.dp))
         }
