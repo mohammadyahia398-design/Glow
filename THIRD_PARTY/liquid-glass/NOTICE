@@ -1,0 +1,10 @@
+This pack contains code from "Liquid Glass (Backdrop)" by Kyant
+https://github.com/Kyant0/AndroidLiquidGlass
+Licensed under the Apache License 2.0 (see LICENSE).
+Keep this NOTICE and LICENSE file in your project, and mark files you modify.
+
+Modifications for Glow (com.glow.app.liquid.backdrop):
+- Kotlin Multiplatform expect/actual merged into Android-only source.
+- Package renamed from com.kyant.backdrop to com.glow.app.liquid.backdrop.
+- Removed dependency on io.github.kyant0:shapes (RoundedRectangularShape branch in Lens.kt).
+- Replaced fastCoerceAtMost/AtLeast with coerceAtMost/AtLeast; removed @Language annotations.
