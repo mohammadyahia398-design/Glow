@@ -57,6 +57,9 @@ import com.glow.app.ui.glass.core.rememberGlassTier
 import com.glow.app.ui.glass.core.rememberSystemReduceMotion
 import com.glow.app.ui.glass.surfaces.glassBackdropSource
 import com.glow.app.ui.glass.surfaces.rememberGlassBackdrop
+import com.glow.app.liquid.backdrop.backdrops.layerBackdrop
+import com.glow.app.liquid.backdrop.backdrops.rememberLayerBackdrop
+import com.glow.app.liquid.ui.GlowLiquidBottomBar
 import com.glow.app.ui.common.GlowIcon
 import com.glow.app.ui.glass.components.LiquidBarItem
 import com.glow.app.ui.glass.components.LiquidBarIcon
@@ -171,6 +174,9 @@ fun GlowApp(settings: SettingsStore, modifier: Modifier = Modifier) {
         )
     }
     val backdrop = rememberGlassBackdrop()
+    // الشريط الزجاجي السائل (أندرويد 13+): يلتقط محتوى الشاشة المجاور له، وما دون ذلك يبقى على الشريط القديم.
+    val liquidBackdrop = rememberLayerBackdrop()
+    val useLiquidBar = tier.supportsRefraction
     val current = playerState.current
     LaunchedEffect(current?.id) { current?.let { library.recordPlay(it.id) } }
 
@@ -182,6 +188,7 @@ fun GlowApp(settings: SettingsStore, modifier: Modifier = Modifier) {
                 Modifier
                     .matchParentSize()
                     .glassBackdropSource(backdrop)
+                    .then(if (useLiquidBar) Modifier.layerBackdrop(liquidBackdrop) else Modifier)
                     .background(Brush.verticalGradient(listOf(skin.bgTop, skin.bgBottom))),
             ) {
                 val open = collection
@@ -258,16 +265,27 @@ fun GlowApp(settings: SettingsStore, modifier: Modifier = Modifier) {
                 enter = slideInVertically { it } + fadeIn(),
                 exit = slideOutVertically { it } + fadeOut(),
             ) {
-                LiquidGlassBar(
-                    items = barItems,
-                    selectedId = libraryTab.name,
-                    onSelect = { id -> libraryTab = LibraryTab.valueOf(id) },
-                    backdrop = backdrop,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .navigationBarsPadding()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                )
+                val barModifier = Modifier
+                    .fillMaxWidth()
+                    .navigationBarsPadding()
+                    .padding(horizontal = 16.dp, vertical = 12.dp)
+                if (useLiquidBar) {
+                    GlowLiquidBottomBar(
+                        items = barItems,
+                        selectedId = libraryTab.name,
+                        onSelect = { id -> libraryTab = LibraryTab.valueOf(id) },
+                        backdrop = liquidBackdrop,
+                        modifier = barModifier,
+                    )
+                } else {
+                    LiquidGlassBar(
+                        items = barItems,
+                        selectedId = libraryTab.name,
+                        onSelect = { id -> libraryTab = LibraryTab.valueOf(id) },
+                        backdrop = backdrop,
+                        modifier = barModifier,
+                    )
+                }
             }
 
             AnimatedVisibility(
