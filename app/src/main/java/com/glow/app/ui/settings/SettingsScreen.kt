@@ -53,6 +53,10 @@ import com.glow.app.ui.common.IconKind
 import com.glow.app.ui.common.GlowTopBar
 import com.glow.app.ui.glass.components.GlassSwitch
 import com.glow.app.ui.theme.Colorways
+import androidx.compose.ui.graphics.Brush
+import com.glow.app.liquid.backdrop.backdrops.rememberCanvasBackdrop
+import com.glow.app.liquid.ui.LiquidToggle
+import com.glow.app.ui.glass.core.rememberGlassTier
 import com.glow.app.ui.theme.LocalGlowSkin
 import com.glow.app.ui.theme.colorToHsv
 import com.glow.app.ui.theme.hsvColor
@@ -73,6 +77,10 @@ fun SettingsScreen(
 ) {
     val skin = LocalGlowSkin.current
     val context = LocalContext.current
+    val glassTier = rememberGlassTier()
+    val liquidBackdrop = rememberCanvasBackdrop {
+        drawRect(Brush.verticalGradient(listOf(skin.bgTop, skin.bgBottom)))
+    }
     var dlg by remember { mutableStateOf<Dlg?>(null) }
 
     var now by remember { mutableStateOf(System.currentTimeMillis()) }
@@ -124,13 +132,24 @@ fun SettingsScreen(
                 chevron = false,
                 onClick = { store.updateSkipShortSongs(!store.skipShortSongs) },
                 trailing = {
-                    GlassSwitch(
-                        checked = store.skipShortSongs,
-                        onCheckedChange = { store.updateSkipShortSongs(it) },
-                        checkedTrackColor = skin.accent,
-                        uncheckedTrackColor = skin.textSecondary.copy(alpha = 0.35f),
-                        rimColor = if (skin.isDark) Color.White else Color(0xFFFFFFFF),
-                    )
+                    if (glassTier.supportsRefraction) {
+                        LiquidToggle(
+                            selected = { store.skipShortSongs },
+                            onSelect = { store.updateSkipShortSongs(it) },
+                            backdrop = liquidBackdrop,
+                            accentColor = skin.accent,
+                            trackColor = skin.textSecondary.copy(alpha = 0.35f),
+                            toggleOnTap = false, // النقر على الصف نفسه يبدّل الحالة
+                        )
+                    } else {
+                        GlassSwitch(
+                            checked = store.skipShortSongs,
+                            onCheckedChange = { store.updateSkipShortSongs(it) },
+                            checkedTrackColor = skin.accent,
+                            uncheckedTrackColor = skin.textSecondary.copy(alpha = 0.35f),
+                            rimColor = if (skin.isDark) Color.White else Color(0xFFFFFFFF),
+                        )
+                    }
                 },
             )
             if (store.skipShortSongs) {

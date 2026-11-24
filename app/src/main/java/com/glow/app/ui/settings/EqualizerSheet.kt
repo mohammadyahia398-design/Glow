@@ -30,6 +30,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.glow.app.media.DeviceEqualizer
+import com.glow.app.liquid.backdrop.backdrops.rememberCanvasBackdrop
+import com.glow.app.liquid.ui.LiquidSlider
+import com.glow.app.ui.glass.core.rememberGlassTier
 import com.glow.app.ui.theme.LocalGlowSkin
 import kotlin.math.roundToInt
 
@@ -42,6 +45,8 @@ fun EqualizerSheet(
     modifier: Modifier = Modifier,
 ) {
     val skin = LocalGlowSkin.current
+    val glassTier = rememberGlassTier()
+    val eqBackdrop = rememberCanvasBackdrop { drawRect(skin.panel) }
     val engine = remember(audioSessionId) { DeviceEqualizer(audioSessionId) }
     val bandCount = engine.bandCount
     val range = engine.levelRange
@@ -150,18 +155,32 @@ fun EqualizerSheet(
                                     fontWeight = FontWeight.SemiBold,
                                 )
                             }
-                            Slider(
-                                value = level.toFloat(),
-                                onValueChange = { value ->
-                                    val next = value.roundToInt().coerceIn(range.first, range.last)
-                                    if (engine.setBandLevel(index, next)) {
-                                        levels[index] = next
-                                        selectedPreset = 0
-                                        if (!enabled) enabled = engine.setEnabled(true)
-                                    }
-                                },
-                                valueRange = range.first.toFloat()..range.last.toFloat(),
-                            )
+                            val onLevelChange: (Float) -> Unit = { value ->
+                                val next = value.roundToInt().coerceIn(range.first, range.last)
+                                if (engine.setBandLevel(index, next)) {
+                                    levels[index] = next
+                                    selectedPreset = 0
+                                    if (!enabled) enabled = engine.setEnabled(true)
+                                }
+                            }
+                            if (glassTier.supportsRefraction) {
+                                LiquidSlider(
+                                    value = { levels[index].toFloat() },
+                                    onValueChange = onLevelChange,
+                                    valueRange = range.first.toFloat()..range.last.toFloat(),
+                                    visibilityThreshold = (range.last - range.first) * 0.002f,
+                                    backdrop = eqBackdrop,
+                                    accentColor = skin.accent,
+                                    trackColor = skin.textSecondary.copy(alpha = 0.3f),
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                                )
+                            } else {
+                                Slider(
+                                    value = level.toFloat(),
+                                    onValueChange = onLevelChange,
+                                    valueRange = range.first.toFloat()..range.last.toFloat(),
+                                )
+                            }
                         }
                     }
                 }
