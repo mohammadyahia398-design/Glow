@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogWindowProvider
 import com.glow.app.ui.theme.LocalGlowSkin
+import com.glow.app.ui.theme.accentBrush
 
 /**
  * نافذة Glow على طراز Samsung: بطاقة مدوّرة (28dp) بسطح داكن موحَّد،
@@ -129,14 +130,14 @@ fun RowScope.GlowDialogAction(
             .weight(1f)
             .height(52.dp)
             .clip(RoundedCornerShape(26.dp))
-            .background(if (primary) solid else skin.chip)
+            .then(if (primary) Modifier.background(skin.accentBrush()) else Modifier.background(skin.chip))
             .alpha(if (enabled) 1f else 0.4f)
             .clickable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             text,
-            color = if (primary) onSolid else skin.text,
+            color = if (primary) skin.onAccent else skin.text,
             fontSize = 16.sp,
             fontWeight = FontWeight.Bold,
         )

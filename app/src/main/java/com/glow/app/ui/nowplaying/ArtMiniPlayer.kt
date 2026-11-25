@@ -52,6 +52,7 @@ import com.glow.app.ui.common.GlowIconTap
 import com.glow.app.ui.common.IconKind
 import com.glow.app.ui.glass.core.rememberGlassTier
 import com.glow.app.ui.theme.LocalGlowSkin
+import com.glow.app.ui.theme.accentBrush
 
 /** ارتفاع المشغّل المصغّر؛ يعتمد عليه `GlowApp` لحساب طبقة التلاشي السفلية. */
 val ArtMiniPlayerHeight = 92.dp
@@ -151,11 +152,7 @@ fun ArtMiniPlayer(
                     Modifier
                         .size(40.dp)
                         .clip(CircleShape)
-                        .background(
-                            Brush.verticalGradient(
-                                listOf(lerp(skin.accent, Color.White, 0.14f), skin.accent),
-                            ),
-                        )
+                        .background(skin.accentBrush())
                         .border(1.dp, Color.White.copy(alpha = 0.22f), CircleShape),
                     contentAlignment = Alignment.Center,
                 ) {

@@ -86,8 +86,8 @@ fun GlowSplash(onFinished: () -> Unit, modifier: Modifier = Modifier) {
                 drawCircle(
                     brush = Brush.radialGradient(
                         listOf(
-                            Color(0xFF67ED54).copy(alpha = 0.45f * halo * (1f - exit)),
-                            Color(0xFFB6AEFB).copy(alpha = 0.25f * halo * (1f - exit)),
+                            Color(0xFFF042FF).copy(alpha = 0.45f * halo * (1f - exit)),
+                            Color(0xFFB992FF).copy(alpha = 0.25f * halo * (1f - exit)),
                             Color.Transparent,
                         ),
                         center = center,
@@ -141,10 +141,10 @@ private fun DrawScope.drawTileFill(tl: Offset, side: Float) {
     val size = Size(side, side)
     drawRect(
         brush = Brush.verticalGradient(
-            0f to Color(0xFFC8D2FC),
-            0.45f to Color(0xFFB4CCF2),
-            0.62f to Color(0xFF7CE8A8),
-            1f to Color(0xFF5CEB7A),
+            0f to Color(0xFFFFE5F1),
+            0.45f to Color(0xFFF5B8FF),
+            0.62f to Color(0xFFF042FF),
+            1f to Color(0xFF7226FF),
             startY = tl.y,
             endY = tl.y + side,
         ),
@@ -161,7 +161,7 @@ private fun DrawScope.drawTileFill(tl: Offset, side: Float) {
         size = size,
     )
     glow(0.15f, 0.12f, 0.60f, Color(0xFFFFFFFF))
-    glow(0.90f, 0.10f, 0.55f, Color(0xFFC3BEFB))
-    glow(0.10f, 0.92f, 0.60f, Color(0xFF41EC9F))
-    glow(0.92f, 0.95f, 0.55f, Color(0xFFB8F900))
+    glow(0.90f, 0.10f, 0.55f, Color(0xFFB992FF))
+    glow(0.10f, 0.92f, 0.60f, Color(0xFF87F5F5))
+    glow(0.92f, 0.95f, 0.55f, Color(0xFF7226FF))
 }

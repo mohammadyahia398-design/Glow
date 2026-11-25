@@ -115,7 +115,7 @@ fun SettingsScreen(
                         drawRect(Brush.verticalGradient(listOf(skin.bgTop, skin.bgBottom)))
                         drawRect(
                             Brush.radialGradient(
-                                listOf(skin.accent.copy(alpha = 0.12f), Color.Transparent),
+                                listOf(skin.accent.copy(alpha = 0.08f), Color.Transparent),
                                 center = Offset(size.width * 0.92f, size.height * 0.04f),
                                 radius = size.width * 0.85f,
                             ),

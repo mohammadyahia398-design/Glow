@@ -25,11 +25,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -41,6 +45,24 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 private const val TAU = (2.0 * PI).toFloat()
+private val Violet = Color(0xFF7226FF)
+private val SparkTint = Color(0xFFF3EAFF)
+
+/** وميض قصير: يبقى صفراً معظم الدورة ثم يلمع لحظة. */
+private fun twinkle(t: Float): Float {
+    val s = sin(t * TAU)
+    return if (s > 0f) s * s * s else 0f
+}
+
+/** شرارة خفيفة جداً: نجمة رباعية رفيعة بنقطة مضيئة في مركزها. */
+private fun DrawScope.sparkle(center: Offset, radius: Float, alpha: Float) {
+    if (alpha <= 0.02f) return
+    val c = SparkTint.copy(alpha = alpha)
+    val w = radius * 0.22f
+    drawLine(c, Offset(center.x - radius, center.y), Offset(center.x + radius, center.y), w, StrokeCap.Round)
+    drawLine(c, Offset(center.x, center.y - radius), Offset(center.x, center.y + radius), w, StrokeCap.Round)
+    drawCircle(c, radius * 0.26f, center)
+}
 
 /** دورة 0..1 متكررة؛ تتجمّد إذا أوقف النظام الرسوم المتحركة. */
 @Composable
@@ -58,7 +80,7 @@ private fun rememberLoopPhase(periodMs: Int): State<Float> {
     }
 }
 
-/** حلقة صغيرة للأزرار والصفوف: قوس لامع بحافة دائرية يطول ويقصر وهو يدور. */
+/** حلقة صغيرة للأزرار والصفوف: قوس لامع بحافة دائرية يطول ويقصر وهو يدور، وخلفه شرارات خفيفة جداً. */
 @Composable
 fun GlowRingLoader(
     modifier: Modifier = Modifier,
@@ -102,6 +124,13 @@ fun GlowRingLoader(
             size = arcSize,
             style = Stroke(stroke, cap = StrokeCap.Round),
         )
+        // شرارتان خفيفتان خلف رأس القوس.
+        val rr = arcSize.width / 2f
+        for (k in 0..1) {
+            val ang = (start + sweep - 40f - k * 95f) * (PI.toFloat() / 180f)
+            val pos = Offset(center.x + rr * cos(ang), center.y + rr * sin(ang))
+            sparkle(pos, stroke * 1.5f, 0.55f * twinkle(t * 2f + k * 0.37f))
+        }
     }
 }
 
@@ -141,7 +170,8 @@ fun GlowOrbsLoader(
     color: Color = LocalGlowSkin.current.accent,
 ) {
     val phase = rememberLoopPhase(6000)
-    val colors = listOf(color, lerp(color, Color.White, 0.35f), lerp(color, Color.White, 0.15f))
+    val colors = listOf(color, Violet, lerp(color, Color.White, 0.30f))
+    val sparks = listOf(Offset(0.30f, 0.28f), Offset(0.72f, 0.34f), Offset(0.58f, 0.74f), Offset(0.26f, 0.66f))
     Canvas(modifier.size(diameter)) {
         val r = this.size.minDimension
         val t = phase.value * TAU
@@ -159,6 +189,9 @@ fun GlowOrbsLoader(
                 center = ctr,
             )
         }
+        sparks.forEachIndexed { i, f ->
+            sparkle(Offset(this.size.width * f.x, this.size.height * f.y), r * 0.045f, 0.5f * twinkle(phase.value * 3f + i * 0.25f))
+        }
     }
 }
 
@@ -174,33 +207,37 @@ fun GlowProgressBar(
 ) {
     val phase = rememberLoopPhase(1500)
     val shown by animateFloatAsState(progress?.coerceIn(0f, 1f) ?: 0f, label = "glowProgress")
-    Canvas(
-        modifier
-            .fillMaxWidth()
-            .height(6.dp)
-            .clip(RoundedCornerShape(50)),
-    ) {
+    Canvas(modifier.fillMaxWidth().height(6.dp)) {
         val w = this.size.width
         val h = this.size.height
-        drawRect(color.copy(alpha = 0.16f))
-        if (progress != null) {
-            drawRoundRect(
-                color = color,
-                size = Size(w * shown, h),
-                cornerRadius = CornerRadius(h / 2f),
-            )
-        } else {
-            val seg = w * 0.4f
-            val x = -seg + (w + seg) * phase.value
-            drawRect(
-                brush = Brush.horizontalGradient(
-                    colors = listOf(Color.Transparent, color, Color.Transparent),
-                    startX = x,
-                    endX = x + seg,
-                ),
-                topLeft = Offset(x, 0f),
-                size = Size(seg, h),
-            )
+        val shape = Path().apply { addRoundRect(RoundRect(0f, 0f, w, h, CornerRadius(h / 2f))) }
+        var headX = -1f
+        clipPath(shape) {
+            drawRect(color.copy(alpha = 0.16f))
+            if (progress != null) {
+                drawRoundRect(
+                    color = color,
+                    size = Size(w * shown, h),
+                    cornerRadius = CornerRadius(h / 2f),
+                )
+                if (shown > 0.02f) headX = w * shown
+            } else {
+                val seg = w * 0.4f
+                val x = -seg + (w + seg) * phase.value
+                drawRect(
+                    brush = Brush.horizontalGradient(
+                        colors = listOf(Color.Transparent, color, Color.Transparent),
+                        startX = x,
+                        endX = x + seg,
+                    ),
+                    topLeft = Offset(x, 0f),
+                    size = Size(seg, h),
+                )
+                headX = x + seg * 0.62f
+            }
+        }
+        if (headX in 0f..w) {
+            sparkle(Offset(headX, h / 2f), 5.dp.toPx(), 0.5f * twinkle(phase.value * 3f))
         }
     }
 }
