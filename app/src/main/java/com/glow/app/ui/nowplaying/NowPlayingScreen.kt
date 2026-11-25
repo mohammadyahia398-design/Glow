@@ -39,6 +39,7 @@ import com.glow.app.ui.common.IconKind
 import com.glow.app.ui.glass.core.rememberGlassTier
 import com.glow.app.ui.settings.EqualizerSheet
 import com.glow.app.ui.common.rememberArtPalette
+import com.glow.app.ui.common.rememberArt
 import com.glow.app.ui.theme.LocalGlowSkin
 
 /** المشغّل الكامل: غلاف كبير وعنوان وعناصر التحكم، فوق خلفية حيّة بألوان الغلاف. */
@@ -72,7 +73,8 @@ fun NowPlayingScreen(
     Box(modifier.fillMaxSize()) {
         AnimatedArtBackground(
             palette,
-            Modifier
+            art = rememberArt(track, 160),
+            modifier = Modifier
                 .matchParentSize()
                 .then(if (useGlass) Modifier.layerBackdrop(liquidBackdrop) else Modifier),
         )

@@ -1,5 +1,6 @@
 package com.glow.app.ui.nowplaying
 
+import android.graphics.Bitmap
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.runtime.State
@@ -16,6 +17,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.FilterQuality
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.unit.IntSize
+import kotlin.math.PI
+import kotlin.math.cos
+import kotlin.math.roundToInt
+import kotlin.math.sin
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.luminance
 import com.glow.app.ui.common.ArtPalette
@@ -23,7 +32,7 @@ import com.glow.app.ui.glass.core.LocalGlassConfig
 import com.glow.app.ui.theme.GlowSkin
 import com.glow.app.ui.theme.LocalGlowSkin
 
-private const val ORB_PERIOD_MS = 14_000
+private const val ORB_PERIOD_MS = 36_000
 
 private fun bottomTintAlpha(skin: GlowSkin) = if (skin.isDark) 0.55f else 0.75f
 
@@ -34,11 +43,11 @@ fun playerContentColor(palette: ArtPalette, skin: GlowSkin): Color {
 }
 
 /**
- * خلفية المشغّل: تدرّج ناعم من ألوان الغلاف، فيه كرتان ضبابيتان
- * تنجرفان ببطء. تتوقف الحركة إذا أوقف النظام الرسوم المتحركة.
+ * خلفية المشغّل: انعكاس الغلاف نفسه مموّهاً وخافتاً كأنه خلف زجاج، وفوقه ثلاث كرات ضوء
+ * ضبابية بألوان قريبة من الغلاف تنجرف ببطء وبالكاد تُرى. تتوقف الحركة إذا أوقف النظام الرسوم.
  */
 @Composable
-fun AnimatedArtBackground(palette: ArtPalette, modifier: Modifier = Modifier) {
+fun AnimatedArtBackground(palette: ArtPalette, modifier: Modifier = Modifier, art: Bitmap? = null) {
     val skin = LocalGlowSkin.current
     val reduceMotion = LocalGlassConfig.current.reduceMotion
 
@@ -55,37 +64,53 @@ fun AnimatedArtBackground(palette: ArtPalette, modifier: Modifier = Modifier) {
             label = "artBackdropPhase",
         )
     }
-    val orbAlpha = if (skin.isDark) 0.55f else 0.70f
+    val orbAlpha = if (skin.isDark) 0.16f else 0.22f
+    val artAlpha = if (skin.isDark) 0.36f else 0.30f
+    // صورة صغيرة جداً تُكبَّر بنعومة: تمويه بلا اعتماد على إصدار أندرويد.
+    val soft = remember(art) {
+        art?.let { runCatching { Bitmap.createScaledBitmap(it, 24, 24, true).asImageBitmap() }.getOrNull() }
+    }
+    val glowMix = lerp(palette.primary, palette.secondary, 0.5f)
 
     Canvas(modifier.fillMaxSize()) {
         // الحركة تُقرأ هنا فقط، فلا تُعاد التركيبة في كل إطار.
-        val a = phase.value * 2f - 1f
+        val t = phase.value * 2f * PI.toFloat()
         val w = size.width
         val h = size.height
 
         drawRect(Brush.verticalGradient(listOf(skin.bgTop, skin.bgBottom)))
 
-        val c1 = Offset(w * (0.22f + 0.14f * a), h * (0.32f + 0.06f * a))
-        drawCircle(
-            brush = Brush.radialGradient(
-                colors = listOf(palette.secondary.copy(alpha = orbAlpha), Color.Transparent),
-                center = c1,
-                radius = w * 0.85f,
-            ),
-            radius = w * 0.85f,
-            center = c1,
-        )
+        soft?.let { img ->
+            drawImage(
+                image = img,
+                srcSize = IntSize(img.width, img.height),
+                dstSize = IntSize(w.roundToInt(), h.roundToInt()),
+                alpha = artAlpha,
+                filterQuality = FilterQuality.High,
+            )
+            // لمعة زجاجية خفيفة من الأعلى.
+            drawRect(
+                Brush.verticalGradient(
+                    0f to Color.White.copy(alpha = 0.05f),
+                    0.35f to Color.Transparent,
+                ),
+            )
+        }
 
-        val c2 = Offset(w * (0.80f - 0.14f * a), h * (0.62f - 0.06f * a))
-        drawCircle(
-            brush = Brush.radialGradient(
-                colors = listOf(palette.primary.copy(alpha = orbAlpha), Color.Transparent),
-                center = c2,
-                radius = w * 0.80f,
-            ),
-            radius = w * 0.80f,
-            center = c2,
-        )
+        fun orb(color: Color, center: Offset, radius: Float) {
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(color.copy(alpha = orbAlpha), Color.Transparent),
+                    center = center,
+                    radius = radius,
+                ),
+                radius = radius,
+                center = center,
+            )
+        }
+        orb(palette.secondary, Offset(w * (0.25f + 0.12f * sin(t)), h * (0.30f + 0.07f * cos(t))), w * 0.70f)
+        orb(palette.primary, Offset(w * (0.78f + 0.10f * cos(2f * t)), h * (0.55f + 0.06f * sin(2f * t))), w * 0.65f)
+        orb(glowMix, Offset(w * (0.50f + 0.16f * sin(t + 2f)), h * (0.80f + 0.05f * cos(t + 2f))), w * 0.60f)
 
         drawRect(
             Brush.verticalGradient(
