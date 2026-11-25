@@ -55,7 +55,12 @@ import com.glow.app.ui.common.GlowTopBar
 import com.glow.app.ui.glass.components.GlassSwitch
 import com.glow.app.ui.theme.Colorways
 import androidx.compose.ui.graphics.Brush
-import com.glow.app.liquid.backdrop.backdrops.rememberCanvasBackdrop
+import com.glow.app.liquid.backdrop.Backdrop
+import com.glow.app.liquid.backdrop.backdrops.layerBackdrop
+import com.glow.app.liquid.backdrop.backdrops.rememberLayerBackdrop
+import com.glow.app.liquid.ui.LiquidGlassCard
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.compositionLocalOf
 import com.glow.app.liquid.ui.LiquidToggle
 import com.glow.app.ui.glass.core.rememberGlassTier
 import com.glow.app.ui.theme.LocalGlowSkin
@@ -64,6 +69,9 @@ import com.glow.app.ui.theme.hsvColor
 import kotlinx.coroutines.delay
 
 private enum class Dlg { SPEED, SLEEP, SHORT, EQUALIZER }
+
+/** خلفية الزجاج السائل لبطاقات الإعدادات؛ null على الأجهزة التي لا تدعم الانكسار. */
+private val LocalSettingsBackdrop = compositionLocalOf<Backdrop?> { null }
 
 /** شاشة الإعدادات على طراز Samsung: عنوان كبير وبطاقات مدوّرة مجمّعة بأقسام. */
 @Composable
@@ -80,9 +88,7 @@ fun SettingsScreen(
     val skin = LocalGlowSkin.current
     val context = LocalContext.current
     val glassTier = rememberGlassTier()
-    val liquidBackdrop = rememberCanvasBackdrop {
-        drawRect(Brush.verticalGradient(listOf(skin.bgTop, skin.bgBottom)))
-    }
+    val liquidBackdrop = rememberLayerBackdrop()
     var dlg by remember { mutableStateOf<Dlg?>(null) }
 
     var now by remember { mutableStateOf(System.currentTimeMillis()) }
@@ -94,12 +100,39 @@ fun SettingsScreen(
     }
     val remainingMin = sleepEndsAt?.let { (((it - now).coerceAtLeast(0)) + 59_999) / 60_000 }
 
+    CompositionLocalProvider(
+        LocalSettingsBackdrop provides (if (glassTier.supportsRefraction) liquidBackdrop else null),
+    ) {
+    Box(modifier.fillMaxSize()) {
+    // خلفية هادئة بوهج خفيف بلون التمييز: هي ما تنكسر خلف البطاقات الزجاجية.
+    Box(
+        Modifier
+            .matchParentSize()
+            .layerBackdrop(liquidBackdrop)
+            .drawBehind {
+                drawRect(Brush.verticalGradient(listOf(skin.bgTop, skin.bgBottom)))
+                drawRect(
+                    Brush.radialGradient(
+                        listOf(skin.accent.copy(alpha = 0.22f), Color.Transparent),
+                        center = Offset(size.width * 0.9f, size.height * 0.12f),
+                        radius = size.width * 0.9f,
+                    ),
+                )
+                drawRect(
+                    Brush.radialGradient(
+                        listOf(skin.accent.copy(alpha = 0.14f), Color.Transparent),
+                        center = Offset(size.width * 0.05f, size.height * 0.72f),
+                        radius = size.width * 0.8f,
+                    ),
+                )
+            },
+    )
     Column(
-        modifier
+        Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .navigationBarsPadding()
-            .padding(bottom = 32.dp),
+            .padding(bottom = 120.dp),
     ) {
         GlowTopBar(title = null, onBack = onBack)
         Text(
@@ -127,7 +160,7 @@ fun SettingsScreen(
         }
 
         Section("أدوات") {
-            Item(IconKind.Note, "عزل الصوت", "فصل صوت المغني عن الموسيقى", onClick = onOpenVocalIsolation)
+            Item(IconKind.Note, "عزل الصوت", null, subtitle = "فصل صوت المغني عن الموسيقى", onClick = onOpenVocalIsolation)
         }
 
         Section("المكتبة") {
@@ -174,6 +207,8 @@ fun SettingsScreen(
             }
             Item(IconKind.Info, "Glow", "الإصدار $version", chevron = false, onClick = null)
         }
+    }
+    }
     }
 
     when (dlg) {
@@ -222,6 +257,7 @@ private fun speedLabel(s: Float) = if (s == 1f) "عادية (×1.0)" else "×$s"
 private fun Section(title: String, content: @Composable () -> Unit) {
     val skin = LocalGlowSkin.current
     val shape = RoundedCornerShape(24.dp)
+    val glassBackdrop = LocalSettingsBackdrop.current
     Text(
         title,
         color = skin.textSecondary,
@@ -230,26 +266,34 @@ private fun Section(title: String, content: @Composable () -> Unit) {
         letterSpacing = 0.6.sp,
         modifier = Modifier.padding(start = 32.dp, end = 32.dp, top = 24.dp, bottom = 8.dp),
     )
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-            .clip(shape)
-            .background(
-                Brush.verticalGradient(
-                    listOf(skin.panel.copy(alpha = 0.98f), skin.panel.copy(alpha = 0.80f)),
-                ),
-            )
-            .drawBehind {
-                drawRect(
+    if (glassBackdrop != null) {
+        LiquidGlassCard(
+            backdrop = glassBackdrop,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+            surfaceColor = skin.panel.copy(alpha = if (skin.isDark) 0.42f else 0.55f),
+        ) { content() }
+    } else {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+                .clip(shape)
+                .background(
                     Brush.verticalGradient(
-                        listOf(Color.White.copy(alpha = if (skin.isDark) 0.07f else 0.40f), Color.Transparent),
-                        endY = size.height * 0.5f,
+                        listOf(skin.panel.copy(alpha = 0.98f), skin.panel.copy(alpha = 0.80f)),
                     ),
                 )
-            }
-            .border(1.dp, skin.glassBorder.copy(alpha = 0.55f), shape),
-    ) { content() }
+                .drawBehind {
+                    drawRect(
+                        Brush.verticalGradient(
+                            listOf(Color.White.copy(alpha = if (skin.isDark) 0.07f else 0.40f), Color.Transparent),
+                            endY = size.height * 0.5f,
+                        ),
+                    )
+                }
+                .border(1.dp, skin.glassBorder.copy(alpha = 0.55f), shape),
+        ) { content() }
+    }
 }
 
 /** صف إعداد: أيقونة داخل مربّع بلون التمييز، عنوان، قيمة اختيارية، ثم سهم أو عنصر مخصص (مثل Switch). */
@@ -260,6 +304,7 @@ private fun Item(
     value: String?,
     chevron: Boolean = true,
     trailing: (@Composable () -> Unit)? = null,
+    subtitle: String? = null,
     onClick: (() -> Unit)?,
 ) {
     val skin = LocalGlowSkin.current
@@ -280,13 +325,17 @@ private fun Item(
             GlowIcon(icon, skin.accentText, 22.dp)
         }
         Spacer(Modifier.width(14.dp))
-        Text(
-            title,
-            color = skin.text,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Medium,
-            modifier = Modifier.weight(1f),
-        )
+        Column(Modifier.weight(1f)) {
+            Text(
+                title,
+                color = skin.text,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Medium,
+            )
+            if (subtitle != null) {
+                Text(subtitle, color = skin.textSecondary, fontSize = 12.5.sp)
+            }
+        }
         if (value != null) {
             Spacer(Modifier.width(12.dp))
             Text(value, color = skin.textSecondary, fontSize = 14.sp)

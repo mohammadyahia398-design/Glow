@@ -17,7 +17,16 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
+import com.glow.app.liquid.backdrop.backdrops.rememberCanvasBackdrop
+import com.glow.app.liquid.ui.LiquidSlider
+import com.glow.app.ui.glass.core.rememberGlassTier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -44,7 +53,7 @@ import com.glow.app.ui.common.rememberArtPalette
 import com.glow.app.ui.theme.LocalGlowSkin
 
 /** ارتفاع المشغّل المصغّر؛ يعتمد عليه `GlowApp` لحساب طبقة التلاشي السفلية. */
-val ArtMiniPlayerHeight = 64.dp
+val ArtMiniPlayerHeight = 76.dp
 
 private val GlowInk = Color(0xFF080B10)
 
@@ -63,6 +72,7 @@ fun ArtMiniPlayer(
     onPrevious: () -> Unit,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    onSeek: ((Float) -> Unit)? = null,
 ) {
     val palette = rememberArtPalette(track)
     val primary by animateColorAsState(palette.primary, tween(450), label = "miniPrimary")
@@ -130,7 +140,7 @@ fun ArtMiniPlayer(
             .clickable(role = Role.Button, onClick = onClick),
     ) {
         Row(
-            Modifier.fillMaxWidth().height(ArtMiniPlayerHeight).padding(start = 10.dp, end = 8.dp, bottom = 8.dp),
+            Modifier.fillMaxWidth().height(ArtMiniPlayerHeight).padding(start = 10.dp, end = 8.dp, bottom = 26.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             AlbumArt(track, Modifier.size(42.dp), radius = 13.dp)
@@ -193,50 +203,78 @@ fun ArtMiniPlayer(
             }
         }
         val accent = LocalGlowSkin.current.accent
-        Box(
-            Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .padding(horizontal = 26.dp, vertical = 4.dp)
-                .height(12.dp)
-                .drawBehind {
-                    val trackH = 4.dp.toPx()
-                    val top = (size.height - trackH) / 2f
-                    val radius = CornerRadius(trackH / 2f)
-                    drawRoundRect(
-                        Color.White.copy(alpha = 0.20f),
-                        topLeft = Offset(0f, top),
-                        size = Size(size.width, trackH),
-                        cornerRadius = radius,
-                    )
-                    val fill = size.width * progress().coerceIn(0f, 1f)
-                    if (fill > 0f) {
+        val glass = rememberGlassTier().supportsRefraction
+        if (glass && onSeek != null) {
+            // منزلق المكتبة نفسه (المقبض الكبسولي الزجاجي): قابل للسحب والنقر، ويبقى من اليسار لليمين.
+            val sliderBackdrop = rememberCanvasBackdrop { drawRect(base) }
+            var drag by remember { mutableStateOf<Float?>(null) }
+            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                LiquidSlider(
+                    value = { drag ?: progress().let { if (it.isNaN()) 0f else it.coerceIn(0f, 1f) } },
+                    onValueChange = { drag = it },
+                    valueRange = 0f..1f,
+                    visibilityThreshold = 0.001f,
+                    backdrop = sliderBackdrop,
+                    accentColor = accent,
+                    trackColor = Color.White.copy(alpha = 0.22f),
+                    onValueChangeFinished = {
+                        drag?.let(onSeek)
+                        drag = null
+                    },
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(horizontal = 30.dp)
+                        .padding(bottom = 2.dp)
+                        .height(26.dp),
+                )
+            }
+        } else {
+            val accent = LocalGlowSkin.current.accent
+            Box(
+                Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .padding(horizontal = 26.dp, vertical = 4.dp)
+                    .height(12.dp)
+                    .drawBehind {
+                        val trackH = 4.dp.toPx()
+                        val top = (size.height - trackH) / 2f
+                        val radius = CornerRadius(trackH / 2f)
                         drawRoundRect(
-                            accent,
+                            Color.White.copy(alpha = 0.20f),
                             topLeft = Offset(0f, top),
-                            size = Size(fill, trackH),
+                            size = Size(size.width, trackH),
                             cornerRadius = radius,
                         )
-                    }
-                    // مقبض كبسولي أبيض كمنزلق المكتبة وهو في حالة الراحة.
-                    val thumbW = 18.dp.toPx()
-                    val thumbH = 11.dp.toPx()
-                    val cx = fill.coerceIn(thumbW / 2f, size.width - thumbW / 2f)
-                    val thumbTop = Offset(cx - thumbW / 2f, (size.height - thumbH) / 2f)
-                    val thumbRadius = CornerRadius(thumbH / 2f)
-                    drawRoundRect(
-                        Color.Black.copy(alpha = 0.25f),
-                        topLeft = Offset(thumbTop.x, thumbTop.y + 1.dp.toPx()),
-                        size = Size(thumbW, thumbH),
-                        cornerRadius = thumbRadius,
-                    )
-                    drawRoundRect(
-                        Color.White,
-                        topLeft = thumbTop,
-                        size = Size(thumbW, thumbH),
-                        cornerRadius = thumbRadius,
-                    )
-                },
-        )
+                        val fill = size.width * progress().coerceIn(0f, 1f)
+                        if (fill > 0f) {
+                            drawRoundRect(
+                                accent,
+                                topLeft = Offset(0f, top),
+                                size = Size(fill, trackH),
+                                cornerRadius = radius,
+                            )
+                        }
+                        // مقبض كبسولي أبيض كمنزلق المكتبة وهو في حالة الراحة.
+                        val thumbW = 18.dp.toPx()
+                        val thumbH = 11.dp.toPx()
+                        val cx = fill.coerceIn(thumbW / 2f, size.width - thumbW / 2f)
+                        val thumbTop = Offset(cx - thumbW / 2f, (size.height - thumbH) / 2f)
+                        val thumbRadius = CornerRadius(thumbH / 2f)
+                        drawRoundRect(
+                            Color.Black.copy(alpha = 0.25f),
+                            topLeft = Offset(thumbTop.x, thumbTop.y + 1.dp.toPx()),
+                            size = Size(thumbW, thumbH),
+                            cornerRadius = thumbRadius,
+                        )
+                        drawRoundRect(
+                            Color.White,
+                            topLeft = thumbTop,
+                            size = Size(thumbW, thumbH),
+                            cornerRadius = thumbRadius,
+                        )
+                    },
+            )
+        }
     }
 }
