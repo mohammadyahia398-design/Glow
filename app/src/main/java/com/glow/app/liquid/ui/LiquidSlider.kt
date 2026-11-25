@@ -69,12 +69,12 @@ fun LiquidSlider(
     val isLightTheme = !isSystemInDarkTheme()
     val resolvedAccent =
         if (accentColor.isSpecified) accentColor
-        else if (isLightTheme) Color(0xFF0088FF)
-        else Color(0xFF0091FF)
+        else if (isLightTheme) Color(0xFFF042FF)
+        else Color(0xFFF042FF)
     val resolvedTrack =
         if (trackColor.isSpecified) trackColor
-        else if (isLightTheme) Color(0xFF787878).copy(0.2f)
-        else Color(0xFF787880).copy(0.36f)
+        else if (isLightTheme) Color(0xFF8A82A8).copy(0.2f)
+        else Color(0xFF8A82A8).copy(0.36f)
 
     val trackBackdrop = rememberLayerBackdrop()
 

@@ -64,7 +64,7 @@ fun rememberArt(track: Track?, px: Int): Bitmap? {
 /** متوسط لون الصورة، لتلوين خلفية المشغّل. */
 fun Bitmap.averageColor(): Color = runCatching {
     Color(Bitmap.createScaledBitmap(this, 1, 1, true).getPixel(0, 0))
-}.getOrDefault(Color(0xFF4A69BD))
+}.getOrDefault(Color(0xFF7226FF))
 
 /** الحجم يحدده المستدعي عبر [modifier]. عند غياب الغلاف يظهر تدرّج مع أيقونة نغمة. */
 @Composable
@@ -78,7 +78,7 @@ fun AlbumArt(
     Box(
         modifier
             .clip(RoundedCornerShape(radius))
-            .background(Brush.linearGradient(listOf(Color(0xFF12303D), Color(0xFF06B6D4)))),
+            .background(Brush.linearGradient(listOf(Color(0xFF160078), Color(0xFFF042FF)))),
         contentAlignment = Alignment.Center,
     ) {
         if (bmp != null) {

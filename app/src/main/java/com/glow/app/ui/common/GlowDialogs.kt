@@ -122,8 +122,8 @@ fun RowScope.GlowDialogAction(
     primary: Boolean = false,
 ) {
     val skin = LocalGlowSkin.current
-    val solid = if (skin.isDark) Color(0xFFF8FAFF) else Color(0xFF0B1620)
-    val onSolid = if (skin.isDark) Color(0xFF07141C) else Color.White
+    val solid = if (skin.isDark) Color(0xFFE4D4FF) else Color(0xFF0E0060)
+    val onSolid = if (skin.isDark) Color(0xFF010030) else Color.White
     Box(
         Modifier
             .weight(1f)

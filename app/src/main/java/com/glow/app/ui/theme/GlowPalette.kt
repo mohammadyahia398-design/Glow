@@ -13,29 +13,29 @@ import androidx.compose.ui.graphics.Color
  */
 object GlowPalette {
     // Canonical Luminous Minimalism palette (from the project handoff).
-    val Void = Color(0xFF090B10)
-    val Night = Color(0xFF0D111A)
-    val Surface = Color(0xFF151B26)
-    val SurfaceLifted = Color(0xFF1C2533)
-    val Amber = Color(0xFFFFA64D)
-    val Coral = Color(0xFFFF7168)
-    val Twilight = Color(0xFF687DEB)
-    val Mint = Color(0xFF82D5BE)
-    val Ivory = Color(0xFFF6F1E9)
-    val Muted = Color(0xFF9299A8)
+    val Void = Color(0xFF000002)
+    val Night = Color(0xFF04040A)
+    val Surface = Color(0xFF0B0B14)
+    val SurfaceLifted = Color(0xFF151522)
+    val Amber = Color(0xFFF042FF)
+    val Coral = Color(0xFFB07CFF)
+    val Twilight = Color(0xFF7226FF)
+    val Mint = Color(0xFF87F5F5)
+    val Ivory = Color(0xFFE4D4FF)
+    val Muted = Color(0xFF9A90B8)
 
     // Backward-compatible aliases used by existing screens and effects.
     val Charcoal = Void
     val TwilightBlue = Twilight
     val Teal = Mint
-    val TwilightSoft = Color(0xFFAAB5FF)
-    val OutlineSolid = Color(0xFF303949)
+    val TwilightSoft = Color(0xFFC9B2FF)
+    val OutlineSolid = Color(0xFF26263A)
 
     // Shared glass tokens. Strong optical effects are implemented in the glass batch.
-    val Hairline = Color(0x26F6F1E9)
-    val GlassFill = Color(0xA6151B26)
-    val GlassHighlight = Color(0x40F6F1E9)
-    val GlassEdge = Color(0x66F6F1E9)
+    val Hairline = Color(0x26E4D4FF)
+    val GlassFill = Color(0xA60B0B14)
+    val GlassHighlight = Color(0x40E4D4FF)
+    val GlassEdge = Color(0x66E4D4FF)
     val GlassShadow = Color(0x66000000)
 }
 
@@ -50,6 +50,9 @@ object GlowMoodColors {
 
 /** تدرجات جاهزة. */
 object GlowGradients {
+    /** تدرّج التمييز الرسمي: ماجنتا ← بنفسجي (الأزرار الرئيسية والخيار المحدد). */
+    val Accent: Brush = Brush.linearGradient(listOf(Color(0xFFF042FF), Color(0xFF7226FF)))
+
     /** خلفية التطبيق الأساسية. */
     val Backdrop: Brush = Brush.verticalGradient(
         listOf(GlowPalette.Charcoal, GlowPalette.Night)

@@ -21,7 +21,7 @@ import androidx.compose.ui.unit.dp
 import com.glow.app.ui.theme.LocalGlowSkin
 
 /** Compatibility color retained for callers that referenced the old token. */
-val GlowIndigo = Color(0xFF687DEB)
+val GlowIndigo = Color(0xFF7226FF)
 
 /** Settings action styled with the same quiet luminous surface as the rest of Glow. */
 @Composable

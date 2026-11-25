@@ -39,7 +39,7 @@ private fun bottomTintAlpha(skin: GlowSkin) = if (skin.isDark) 0.55f else 0.75f
 /** لون النصوص والأزرار في أسفل المشغّل: داكن أو فاتح بحسب سطوع الخلفية هناك. */
 fun playerContentColor(palette: ArtPalette, skin: GlowSkin): Color {
     val bottom = palette.primary.copy(alpha = bottomTintAlpha(skin)).compositeOver(skin.bgBottom)
-    return if (bottom.luminance() > 0.5f) Color(0xFF07141C) else Color.White
+    return if (bottom.luminance() > 0.5f) Color(0xFF010030) else Color.White
 }
 
 /**

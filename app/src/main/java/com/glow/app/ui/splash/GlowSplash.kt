@@ -46,7 +46,7 @@ private val BackOut = CubicBezierEasing(0.34f, 1.56f, 0.64f, 1f)
  */
 @Composable
 fun GlowSplash(onFinished: () -> Unit, modifier: Modifier = Modifier) {
-    val bg = if (isSystemInDarkTheme()) Color(0xFF0B0B0D) else Color(0xFFECECEC)
+    val bg = if (isSystemInDarkTheme()) Color(0xFF000002) else Color(0xFFFEFDFF)
     val progress = remember { Animatable(0f) }
     // يضمن استدعاء أحدث دالة حتى لو أُعيد تركيب الشاشة أثناء الحركة.
     val currentOnFinished = rememberUpdatedState(onFinished)

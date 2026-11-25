@@ -46,7 +46,7 @@ import com.glow.app.ui.glass.surfaces.GlassSurface
 import com.glow.app.ui.theme.LocalGlowSkin
 import kotlin.math.abs
 
-private val DefaultAccent = Color(0xFF06B6D4)
+private val DefaultAccent = Color(0xFFF042FF)
 
 /** أقصى تمدد أفقي عند السحب خارج الطرفين (كنسبة من العرض). */
 private const val RUBBER_MAX = 0.06f

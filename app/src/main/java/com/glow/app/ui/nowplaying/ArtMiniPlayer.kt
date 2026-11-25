@@ -87,8 +87,8 @@ fun ArtMiniPlayer(
     val surface = skin.panel
     // نفس لون وشفافية حاوية الشريط السفلي، فيبدوان من قطعة زجاج واحدة.
     val container =
-        if (skin.isDark) Color(0xFF121212).copy(alpha = 0.40f)
-        else Color(0xFFFAFAFA).copy(alpha = 0.40f)
+        if (skin.isDark) Color(0xFF000002).copy(alpha = 0.40f)
+        else Color(0xFFFEFDFF).copy(alpha = 0.40f)
     val glass = refraction && backdrop != null
 
     val surfaceModifier =

@@ -31,6 +31,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.glow.app.ui.theme.LocalGlowSkin
+import com.glow.app.ui.theme.accentBrush
 
 /** شريحة اختيار بهوية Glow (بدل FilterChip): المحدّدة بلون التمييز، وغير المحدّدة سطح هادئ بحافة رفيعة. */
 @Composable
@@ -50,7 +51,7 @@ fun GlowChip(
     )
     val shape = RoundedCornerShape(50)
     val background: Brush =
-        if (selected) Brush.verticalGradient(listOf(lerp(skin.accent, Color.White, 0.14f), skin.accent))
+        if (selected) skin.accentBrush()
         else SolidColor(skin.chip)
     val content = if (selected) skin.onAccent else skin.text
     val border = if (selected) Color.White.copy(alpha = 0.22f) else skin.text.copy(alpha = 0.14f)

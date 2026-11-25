@@ -120,8 +120,8 @@ fun GlassSwitch(
     onCheckedChange: ((Boolean) -> Unit)?,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
-    checkedTrackColor: Color = Color(0xFF34C759),
-    uncheckedTrackColor: Color = Color(0xFF8E8E93).copy(alpha = 0.45f),
+    checkedTrackColor: Color = Color(0xFFF042FF),
+    uncheckedTrackColor: Color = Color(0xFF6E6A85).copy(alpha = 0.45f),
     rimColor: Color = Color.White,
 ) {
     val s = GlassSwitchSpec

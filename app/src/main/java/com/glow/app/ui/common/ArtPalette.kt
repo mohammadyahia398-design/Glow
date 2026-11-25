@@ -13,7 +13,7 @@ import kotlin.math.min
 @Immutable
 data class ArtPalette(val primary: Color, val secondary: Color, val tertiary: Color) {
     companion object {
-        val Default = ArtPalette(Color(0xFF06B6D4), Color(0xFF67E8F9), Color(0xFF12303D))
+        val Default = ArtPalette(Color(0xFFF042FF), Color(0xFFB07CFF), Color(0xFF160078))
     }
 }
 

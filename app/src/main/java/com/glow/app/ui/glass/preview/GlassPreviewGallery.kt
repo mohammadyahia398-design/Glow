@@ -54,12 +54,12 @@ import com.glow.app.ui.glass.core.rememberSystemReduceMotion
 import com.glow.app.ui.glass.surfaces.glassBackdropSource
 import com.glow.app.ui.glass.surfaces.rememberGlassBackdrop
 
-private val Charcoal = Color(0xFF0D0E12)
-private val Amber = Color(0xFF06B6D4)
-private val Coral = Color(0xFFFF6B6B)
-private val TwilightBlue = Color(0xFF4A69BD)
-private val Ivory = Color(0xFFF5F6FA)
-private val Muted = Color(0xFF8C92A4)
+private val Charcoal = Color(0xFF000002)
+private val Amber = Color(0xFFF042FF)
+private val Coral = Color(0xFFB07CFF)
+private val TwilightBlue = Color(0xFF7226FF)
+private val Ivory = Color(0xFFE4D4FF)
+private val Muted = Color(0xFF9A90B8)
 
 /**
  * معرض بصري لاختبار نظام الزجاج على جهاز فعلي أو في المعاينة.
@@ -328,7 +328,7 @@ private fun GalleryBackground(animate: Boolean, modifier: Modifier = Modifier) {
     }
 }
 
-@Preview(name = "Glass gallery", showBackground = true, backgroundColor = 0xFF0D0E12, widthDp = 400, heightDp = 860)
+@Preview(name = "Glass gallery", showBackground = true, backgroundColor = 0xFF000002, widthDp = 400, heightDp = 860)
 @Composable
 private fun GlassPreviewGalleryPreview() {
     GlassPreviewGallery()

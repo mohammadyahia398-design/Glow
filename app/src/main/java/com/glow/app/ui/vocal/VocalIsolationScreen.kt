@@ -237,8 +237,8 @@ fun VocalIsolationScreen(modifier: Modifier = Modifier) {
                     healthMessage,
                     modifier = Modifier.weight(1.25f),
                     color = when (healthState) {
-                        "ok" -> Color(0xFF55C99A)
-                        "error" -> Color(0xFFFF8A78)
+                        "ok" -> Color(0xFF87F5F5)
+                        "error" -> Color(0xFFFF6B8E)
                         else -> skin.textSecondary
                     },
                     fontSize = 11.sp,
@@ -338,7 +338,7 @@ fun VocalIsolationScreen(modifier: Modifier = Modifier) {
                         }
                     },
                     modifier = Modifier.fillMaxWidth().height(48.dp),
-                    contentColor = Color(0xFFFF8A78),
+                    contentColor = Color(0xFFFF6B8E),
                 ) {
                     Text(if (predictionId.isBlank()) "إيقاف الرفع" else "إلغاء المعالجة")
                 }
@@ -350,8 +350,8 @@ fun VocalIsolationScreen(modifier: Modifier = Modifier) {
             Text(
                 status,
                 color = when (phase) {
-                    "done" -> Color(0xFF55C99A)
-                    "error" -> Color(0xFFFF8A78)
+                    "done" -> Color(0xFF87F5F5)
+                    "error" -> Color(0xFFFF6B8E)
                     else -> skin.text
                 },
                 fontSize = 14.sp,

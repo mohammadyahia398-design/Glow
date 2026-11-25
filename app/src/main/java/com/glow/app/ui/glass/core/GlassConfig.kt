@@ -178,10 +178,10 @@ data class GlassConfig(
 ) {
     companion object {
         /** Ivory #F5F6FA. */
-        val DefaultTint = Color(0xFFF5F6FA)
+        val DefaultTint = Color(0xFFEFE6FF)
 
         /** قاعدة داكنة قريبة من Charcoal للمستوى البديل. */
-        val DefaultFallbackBase = Color(0xFF14161C)
+        val DefaultFallbackBase = Color(0xFF0A0A12)
     }
 }
 

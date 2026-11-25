@@ -56,12 +56,12 @@ private val GlassY = 100.dp
 private val GlassW = 196.dp
 private val GlassH = 84.dp
 
-private val Cyan1 = Color(0xFF67E8F9)
-private val Cyan2 = Color(0xFF06B6D4)
-private val Cyan3 = Color(0xFF0891B2)
-private val Indigo = Color(0xFF4F46E5)
-private val Periwinkle = Color(0xFF93A8FF)
-private val Ink = Color(0xFF07141C)
+private val Cyan1 = Color(0xFFB07CFF)
+private val Cyan2 = Color(0xFFF042FF)
+private val Cyan3 = Color(0xFF7226FF)
+private val Indigo = Color(0xFF7226FF)
+private val Periwinkle = Color(0xFFC9B2FF)
+private val Ink = Color(0xFF010030)
 
 /**
  * حالة فراغ بلغة «الصلب أمام الزجاج»: مجسّم أبيض صلب فيه رمز، خلفه كتلة سماوية ساطعة،
@@ -88,7 +88,7 @@ fun GlowEmptyState(
         animationSpec = infiniteRepeatable(tween(2800, easing = FastOutSlowInEasing), RepeatMode.Reverse),
         label = "emptyFloatValue",
     )
-    val solid = if (skin.isDark) Color(0xFFF8FAFF) else Color(0xFF0B1620)
+    val solid = if (skin.isDark) Color(0xFFE4D4FF) else Color(0xFF0E0060)
     val onSolid = if (skin.isDark) Ink else Color.White
 
     Column(
@@ -184,7 +184,7 @@ private fun EmptyScene(icon: IconKind) {
                 .offset(x = 20.dp, y = 0.dp)
                 .size(150.dp)
                 .shadow(14.dp, RoundedCornerShape(40.dp), ambientColor = Cyan2, spotColor = Cyan2)
-                .background(Color(0xFFF8FAFF), RoundedCornerShape(40.dp)),
+                .background(Color(0xFFE4D4FF), RoundedCornerShape(40.dp)),
             contentAlignment = Alignment.TopCenter,
         ) {
             GlowIcon(icon, Ink, 78.dp, Modifier.padding(top = 22.dp))

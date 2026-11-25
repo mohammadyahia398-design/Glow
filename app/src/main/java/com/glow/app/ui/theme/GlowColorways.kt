@@ -27,8 +27,8 @@ object Colorways {
     val Glow = Colorway(
         id = "glow",
         name = "وهج",
-        blobs = listOf(GlowPalette.Amber, GlowPalette.Coral, GlowPalette.Twilight, GlowPalette.Mint),
-        accent = GlowPalette.Amber,
+        blobs = listOf(Color(0xFFF042FF), Color(0xFF7226FF), Color(0xFF87F5F5), Color(0xFF160078)),
+        accent = Color(0xFFF042FF),
         bg = GlowPalette.Void,
     )
     val Dusk = Colorway(

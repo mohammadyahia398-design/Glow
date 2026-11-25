@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.sp
 import com.glow.app.ui.icons.GlowGlyph
 import com.glow.app.ui.icons.Glyph
 import com.glow.app.ui.theme.LocalGlowSkin
+import com.glow.app.ui.theme.accentBrush
 
 /*
  * أزرار Glow الموحّدة: كبسولات بنفس الاستدارة والسماكة والضغطة النابضة،
@@ -116,7 +117,7 @@ fun GlowFilledButton(
         onClick = onClick,
         modifier = modifier.heightIn(min = 48.dp),
         enabled = enabled,
-        background = Brush.verticalGradient(listOf(lerp(skin.accent, Color.White, 0.14f), skin.accent)),
+        background = skin.accentBrush(),
         border = BorderStroke(1.dp, Color.White.copy(alpha = 0.22f)),
         contentColor = skin.onAccent,
         fontSize = 16.sp,

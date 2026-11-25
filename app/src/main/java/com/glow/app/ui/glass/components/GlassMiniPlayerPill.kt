@@ -43,10 +43,10 @@ import com.glow.app.ui.glass.surfaces.GlassBackdrop
 import com.glow.app.ui.glass.surfaces.GlassSurface
 import com.glow.app.ui.theme.LocalGlowSkin
 
-private val Ivory = Color(0xFFF5F6FA)
-private val Muted = Color(0xFF8C92A4)
-private val Charcoal = Color(0xFF0D0E12)
-private val DefaultAccent = Color(0xFF06B6D4)
+private val Ivory = Color(0xFFE4D4FF)
+private val Muted = Color(0xFF9A90B8)
+private val Charcoal = Color(0xFF000002)
+private val DefaultAccent = Color(0xFFF042FF)
 
 private val PillHeight = 64.dp
 

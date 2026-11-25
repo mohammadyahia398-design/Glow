@@ -122,7 +122,7 @@ fun GlowGlassSlider(
 
                     // 1) الجسم الزجاجي الداكن
                     clipPath(track) {
-                        drawRect(Color(0xFF050A14).copy(alpha = if (dark) 0.90f else 0.78f))
+                        drawRect(Color(0xFF000002).copy(alpha = if (dark) 0.90f else 0.78f))
                         if (fillColors.size >= 2) {
                             drawRect(Brush.horizontalGradient(fillColors, 0f, w), alpha = 0.22f)
                         }
@@ -135,7 +135,7 @@ fun GlowGlassSlider(
                             } else {
                                 drawRect(
                                     Brush.horizontalGradient(
-                                        listOf(Color(0xFFD9DADF), Color(0xFFFFFFFF)),
+                                        listOf(Color(0xFFD8CCF2), Color(0xFFFFFFFF)),
                                         0f, fillW,
                                     ),
                                 )
