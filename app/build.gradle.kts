@@ -16,16 +16,21 @@ android {
         versionName = "0.1.0"
     }
 
+    // توقيع ثابت: بدونه يولّد كل بناء على GitHub مفتاح debug جديداً فيرفض الهاتف التحديث فوق النسخة القديمة.
     signingConfigs {
-        getByName("debug") {
-            storeFile = file("glow-debug-signing.dat")
-            storePassword = "android"
-            keyAlias = "androiddebugkey"
-            keyPassword = "android"
+        create("glowDebug") {
+            storeFile = file("glow-debug-signing.p12")
+            storeType = "pkcs12"
+            storePassword = "glowdebug"
+            keyAlias = "glow"
+            keyPassword = "glowdebug"
         }
     }
 
     buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("glowDebug")
+        }
         release {
             isMinifyEnabled = false
         }
