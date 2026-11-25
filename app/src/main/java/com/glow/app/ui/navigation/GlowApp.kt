@@ -259,6 +259,7 @@ fun GlowApp(settings: SettingsStore, modifier: Modifier = Modifier) {
                     onPrevious = { controller?.previous() },
                     onClick = { showPlayer = true },
                     onSeek = { f -> controller?.seekTo((f * playerState.durationMs).toLong()) },
+                    backdrop = if (useLiquidBar) liquidBackdrop else null,
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .navigationBarsPadding()

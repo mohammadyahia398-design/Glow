@@ -1,7 +1,6 @@
 package com.glow.app.ui.nowplaying
 
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -22,45 +21,49 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.compose.ui.unit.LayoutDirection
-import com.glow.app.liquid.backdrop.backdrops.rememberCanvasBackdrop
-import com.glow.app.liquid.ui.LiquidSlider
-import com.glow.app.ui.glass.core.rememberGlassTier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
-import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.glow.app.liquid.backdrop.Backdrop
+import com.glow.app.liquid.backdrop.backdrops.rememberCanvasBackdrop
+import com.glow.app.liquid.backdrop.drawBackdrop
+import com.glow.app.liquid.backdrop.effects.blur
+import com.glow.app.liquid.backdrop.effects.lens
+import com.glow.app.liquid.backdrop.effects.vibrancy
+import com.glow.app.liquid.ui.LiquidSlider
 import com.glow.app.media.Track
 import com.glow.app.ui.common.AlbumArt
 import com.glow.app.ui.common.GlowIcon
 import com.glow.app.ui.common.GlowIconTap
 import com.glow.app.ui.common.IconKind
-import com.glow.app.ui.common.rememberArtPalette
+import com.glow.app.ui.glass.core.rememberGlassTier
 import com.glow.app.ui.theme.LocalGlowSkin
 
 /** ارتفاع المشغّل المصغّر؛ يعتمد عليه `GlowApp` لحساب طبقة التلاشي السفلية. */
-val ArtMiniPlayerHeight = 76.dp
+val ArtMiniPlayerHeight = 92.dp
 
-private val GlowInk = Color(0xFF080B10)
+/** منطقة المنزلق: تتّسع لمقبض الضغط (24dp × 1.5 = 36dp) كاملاً فلا يخرج عن الكبسولة. */
+private val SliderZone = 36.dp
+private val SliderBottomGap = 4.dp
 
 /**
- * المشغّل المصغّر بهوية التوهّج: كبسولة داكنة يتسرّب إليها لون غلاف الأغنية من الأطراف،
- * بحافة لامعة، وكرة تشغيل متوهّجة، وشريط تقدّم رفيع برأس مضيء.
- * النص دائماً فاتح فوق خلفية داكنة، فالتباين ثابت مهما كان الغلاف.
+ * المشغّل المصغّر بهوية Glow: كبسولة زجاجية سائلة بألوان الهوية فقط (سطح محايد + لون التمييز)،
+ * أزرار موحّدة مع بقية التطبيق، ومنزلق سائل يبقى كله داخل الكبسولة.
+ * لا يتسرّب إليه لون الغلاف: الألوان الزائدة أُزيلت.
  */
 @Composable
 fun ArtMiniPlayer(
@@ -73,82 +76,51 @@ fun ArtMiniPlayer(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     onSeek: ((Float) -> Unit)? = null,
+    backdrop: Backdrop? = null,
 ) {
-    val palette = rememberArtPalette(track)
-    val primary by animateColorAsState(palette.primary, tween(450), label = "miniPrimary")
-    val secondary by animateColorAsState(palette.secondary, tween(450), label = "miniSecondary")
-    val base = lerp(GlowInk, primary, 0.16f)
-    val shape = RoundedCornerShape(32.dp)
-    val orbIcon = if (lerp(primary, secondary, 0.5f).luminance() > 0.55f) GlowInk else Color.White
+    val skin = LocalGlowSkin.current
+    val refraction = rememberGlassTier().supportsRefraction
+    val shape = RoundedCornerShape(36.dp)
+    val surface = skin.panel
+
+    val surfaceModifier =
+        if (refraction && backdrop != null) {
+            Modifier.drawBackdrop(
+                backdrop = backdrop,
+                shape = { shape },
+                effects = {
+                    vibrancy()
+                    blur(8f.dp.toPx())
+                    lens(16f.dp.toPx(), 16f.dp.toPx())
+                },
+                onDrawSurface = { drawRect(surface.copy(alpha = 0.62f)) },
+            )
+        } else {
+            Modifier.background(surface.copy(alpha = 0.97f), shape)
+        }
 
     Box(
         modifier
             .fillMaxWidth()
             .height(ArtMiniPlayerHeight)
-            .shadow(16.dp, shape, ambientColor = primary.copy(alpha = 0.6f), spotColor = primary)
+            .then(surfaceModifier)
             .clip(shape)
-            .drawBehind {
-                drawRect(base)
-                drawRect(
-                    Brush.radialGradient(
-                        colors = listOf(primary.copy(alpha = 0.60f), primary.copy(alpha = 0f)),
-                        center = Offset(size.width * 0.10f, size.height * 1.15f),
-                        radius = size.width * 0.55f,
-                    ),
-                )
-                drawRect(
-                    Brush.radialGradient(
-                        colors = listOf(secondary.copy(alpha = 0.34f), secondary.copy(alpha = 0f)),
-                        center = Offset(size.width * 0.92f, -size.height * 0.20f),
-                        radius = size.width * 0.45f,
-                    ),
-                )
-                drawRect(
-                    Brush.verticalGradient(
-                        colors = listOf(Color.White.copy(alpha = 0.10f), Color.White.copy(alpha = 0f)),
-                        endY = size.height * 0.5f,
-                    ),
-                )
-                // صبغة زجاجية متدرجة من الأسفل بلون الغلاف
-                drawRect(
-                    Brush.verticalGradient(
-                        colors = listOf(primary.copy(alpha = 0f), primary.copy(alpha = 0.32f)),
-                        startY = size.height * 0.35f,
-                        endY = size.height,
-                    ),
-                )
-                // حافة علوية زجاجية رفيعة تتلاشى عند الطرفين
-                drawRect(
-                    Brush.horizontalGradient(
-                        listOf(Color.Transparent, Color.White.copy(alpha = 0.85f), Color.Transparent),
-                    ),
-                    topLeft = Offset(size.width * 0.06f, 0f),
-                    size = Size(size.width * 0.88f, 1.5.dp.toPx()),
-                )
-            }
-            .border(
-                1.dp,
-                Brush.linearGradient(
-                    listOf(
-                        Color.White.copy(alpha = 0.45f),
-                        Color.White.copy(alpha = 0.06f),
-                        secondary.copy(alpha = 0.35f),
-                    ),
-                ),
-                shape,
-            )
+            .border(1.dp, skin.glassBorder.copy(alpha = 0.30f), shape)
             .clickable(role = Role.Button, onClick = onClick),
     ) {
         Row(
-            Modifier.fillMaxWidth().height(ArtMiniPlayerHeight).padding(start = 10.dp, end = 8.dp, bottom = 26.dp),
+            Modifier
+                .fillMaxWidth()
+                .height(ArtMiniPlayerHeight - SliderZone - SliderBottomGap)
+                .padding(start = 14.dp, end = 10.dp, top = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            AlbumArt(track, Modifier.size(42.dp), radius = 13.dp)
+            AlbumArt(track, Modifier.size(40.dp), radius = 14.dp)
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(
                     text = track.title,
-                    color = Color.White,
+                    color = skin.text,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
@@ -156,57 +128,41 @@ fun ArtMiniPlayer(
                 )
                 Text(
                     text = track.artist,
-                    color = Color.White.copy(alpha = 0.70f),
+                    color = skin.textSecondary,
                     fontSize = 12.5.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            GlowIconTap("السابق", onPrevious, size = 40.dp) {
-                GlowIcon(IconKind.Prev, Color.White.copy(alpha = 0.88f), 22.dp)
+            GlowIconTap("السابق", onPrevious, size = 44.dp) {
+                GlowIcon(IconKind.Prev, skin.text.copy(alpha = 0.9f), 22.dp)
             }
-            GlowIconTap(if (isPlaying) "إيقاف مؤقت" else "تشغيل", onTogglePlay, size = 46.dp) {
+            // زر التشغيل: نفس تدرّج وحافة GlowFilledButton، بلا ألوان إضافية.
+            GlowIconTap(if (isPlaying) "إيقاف مؤقت" else "تشغيل", onTogglePlay, size = 48.dp) {
                 Box(
                     Modifier
                         .size(42.dp)
                         .clip(CircleShape)
-                        .drawBehind {
-                            drawCircle(
-                                Brush.radialGradient(
-                                    colors = listOf(secondary, primary),
-                                    center = Offset(size.width * 0.35f, size.height * 0.30f),
-                                    radius = size.width * 0.85f,
-                                ),
-                            )
-                            drawCircle(
-                                Brush.radialGradient(
-                                    colors = listOf(Color.White.copy(alpha = 0.65f), Color.White.copy(alpha = 0f)),
-                                    center = Offset(size.width * 0.32f, size.height * 0.26f),
-                                    radius = size.width * 0.38f,
-                                ),
-                            )
-                        }
-                        .border(
-                            1.dp,
+                        .background(
                             Brush.verticalGradient(
-                                listOf(Color.White.copy(alpha = 0.70f), Color.White.copy(alpha = 0.10f)),
+                                listOf(lerp(skin.accent, Color.White, 0.14f), skin.accent),
                             ),
-                            CircleShape,
-                        ),
+                        )
+                        .border(1.dp, Color.White.copy(alpha = 0.22f), CircleShape),
                     contentAlignment = Alignment.Center,
                 ) {
-                    GlowIcon(if (isPlaying) IconKind.Pause else IconKind.Play, orbIcon, 24.dp)
+                    GlowIcon(if (isPlaying) IconKind.Pause else IconKind.Play, skin.onAccent, 22.dp)
                 }
             }
-            GlowIconTap("التالي", onNext, size = 40.dp) {
-                GlowIcon(IconKind.Next, Color.White.copy(alpha = 0.88f), 22.dp)
+            GlowIconTap("التالي", onNext, size = 44.dp) {
+                GlowIcon(IconKind.Next, skin.text.copy(alpha = 0.9f), 22.dp)
             }
         }
-        val accent = LocalGlowSkin.current.accent
-        val glass = rememberGlassTier().supportsRefraction
-        if (glass && onSeek != null) {
-            // منزلق المكتبة نفسه (المقبض الكبسولي الزجاجي): قابل للسحب والنقر، ويبقى من اليسار لليمين.
-            val sliderBackdrop = rememberCanvasBackdrop { drawRect(base) }
+
+        val trackColor = skin.text.copy(alpha = 0.16f)
+        if (refraction && onSeek != null) {
+            // منزلق المكتبة نفسه؛ يبقى من اليسار لليمين، ومنطقته تتّسع للمقبض المضغوط كاملاً.
+            val sliderBackdrop = rememberCanvasBackdrop { drawRect(surface) }
             var drag by remember { mutableStateOf<Float?>(null) }
             CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
                 LiquidSlider(
@@ -215,33 +171,33 @@ fun ArtMiniPlayer(
                     valueRange = 0f..1f,
                     visibilityThreshold = 0.001f,
                     backdrop = sliderBackdrop,
-                    accentColor = accent,
-                    trackColor = Color.White.copy(alpha = 0.22f),
+                    accentColor = skin.accent,
+                    trackColor = trackColor,
                     onValueChangeFinished = {
                         drag?.let(onSeek)
                         drag = null
                     },
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
-                        .padding(horizontal = 30.dp)
-                        .padding(bottom = 2.dp)
-                        .height(26.dp),
+                        .padding(horizontal = 36.dp)
+                        .padding(bottom = SliderBottomGap)
+                        .height(SliderZone),
                 )
             }
         } else {
-            val accent = LocalGlowSkin.current.accent
             Box(
                 Modifier
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
-                    .padding(horizontal = 26.dp, vertical = 4.dp)
+                    .padding(horizontal = 36.dp)
+                    .padding(bottom = SliderBottomGap + (SliderZone - 12.dp) / 2)
                     .height(12.dp)
                     .drawBehind {
                         val trackH = 4.dp.toPx()
                         val top = (size.height - trackH) / 2f
                         val radius = CornerRadius(trackH / 2f)
                         drawRoundRect(
-                            Color.White.copy(alpha = 0.20f),
+                            trackColor,
                             topLeft = Offset(0f, top),
                             size = Size(size.width, trackH),
                             cornerRadius = radius,
@@ -249,30 +205,12 @@ fun ArtMiniPlayer(
                         val fill = size.width * progress().coerceIn(0f, 1f)
                         if (fill > 0f) {
                             drawRoundRect(
-                                accent,
+                                skin.accent,
                                 topLeft = Offset(0f, top),
                                 size = Size(fill, trackH),
                                 cornerRadius = radius,
                             )
                         }
-                        // مقبض كبسولي أبيض كمنزلق المكتبة وهو في حالة الراحة.
-                        val thumbW = 18.dp.toPx()
-                        val thumbH = 11.dp.toPx()
-                        val cx = fill.coerceIn(thumbW / 2f, size.width - thumbW / 2f)
-                        val thumbTop = Offset(cx - thumbW / 2f, (size.height - thumbH) / 2f)
-                        val thumbRadius = CornerRadius(thumbH / 2f)
-                        drawRoundRect(
-                            Color.Black.copy(alpha = 0.25f),
-                            topLeft = Offset(thumbTop.x, thumbTop.y + 1.dp.toPx()),
-                            size = Size(thumbW, thumbH),
-                            cornerRadius = thumbRadius,
-                        )
-                        drawRoundRect(
-                            Color.White,
-                            topLeft = thumbTop,
-                            size = Size(thumbW, thumbH),
-                            cornerRadius = thumbRadius,
-                        )
                     },
             )
         }
