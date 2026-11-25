@@ -75,6 +75,7 @@ fun SettingsScreen(
     onSleepTimer: (Int) -> Unit,
     audioSessionId: Int,
     modifier: Modifier = Modifier,
+    onOpenVocalIsolation: () -> Unit = {},
 ) {
     val skin = LocalGlowSkin.current
     val context = LocalContext.current
@@ -123,6 +124,10 @@ fun SettingsScreen(
             ) { dlg = Dlg.SLEEP }
             Divider()
             Item(IconKind.Equalizer, "المعادل الصوتي", "تحكم متقدم") { dlg = Dlg.EQUALIZER }
+        }
+
+        Section("أدوات") {
+            Item(IconKind.Note, "عزل الصوت", "فصل صوت المغني عن الموسيقى", onClick = onOpenVocalIsolation)
         }
 
         Section("المكتبة") {

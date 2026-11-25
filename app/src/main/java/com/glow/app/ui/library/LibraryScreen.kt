@@ -84,7 +84,7 @@ enum class LibraryTab(val label: String, val icon: IconKind) {
     VocalIsolation("عزل الصوت", IconKind.Note);
 
     companion object {
-        val barTabs: List<LibraryTab> = listOf(Tracks, Albums, Artists, Favorites, Playlists, VocalIsolation)
+        val barTabs: List<LibraryTab> = listOf(Tracks, Albums, Artists, Favorites, Playlists)
     }
 }
 

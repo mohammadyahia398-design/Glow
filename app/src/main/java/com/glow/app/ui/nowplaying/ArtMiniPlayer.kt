@@ -41,6 +41,7 @@ import com.glow.app.ui.common.GlowIcon
 import com.glow.app.ui.common.GlowIconTap
 import com.glow.app.ui.common.IconKind
 import com.glow.app.ui.common.rememberArtPalette
+import com.glow.app.ui.theme.LocalGlowSkin
 
 /** ارتفاع المشغّل المصغّر؛ يعتمد عليه `GlowApp` لحساب طبقة التلاشي السفلية. */
 val ArtMiniPlayerHeight = 64.dp
@@ -191,26 +192,50 @@ fun ArtMiniPlayer(
                 GlowIcon(IconKind.Next, Color.White.copy(alpha = 0.88f), 22.dp)
             }
         }
+        val accent = LocalGlowSkin.current.accent
         Box(
             Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .padding(horizontal = 30.dp, vertical = 6.dp)
-                .height(3.dp)
+                .padding(horizontal = 26.dp, vertical = 4.dp)
+                .height(12.dp)
                 .drawBehind {
-                    val radius = CornerRadius(size.height / 2f)
-                    drawRoundRect(Color.White.copy(alpha = 0.14f), cornerRadius = radius)
+                    val trackH = 4.dp.toPx()
+                    val top = (size.height - trackH) / 2f
+                    val radius = CornerRadius(trackH / 2f)
+                    drawRoundRect(
+                        Color.White.copy(alpha = 0.20f),
+                        topLeft = Offset(0f, top),
+                        size = Size(size.width, trackH),
+                        cornerRadius = radius,
+                    )
                     val fill = size.width * progress().coerceIn(0f, 1f)
                     if (fill > 0f) {
                         drawRoundRect(
-                            Brush.horizontalGradient(listOf(primary, secondary), startX = 0f, endX = maxOf(fill, 1f)),
-                            size = Size(fill, size.height),
+                            accent,
+                            topLeft = Offset(0f, top),
+                            size = Size(fill, trackH),
                             cornerRadius = radius,
                         )
-                        val head = Offset(fill, size.height / 2f)
-                        drawCircle(secondary.copy(alpha = 0.30f), radius = 7.dp.toPx(), center = head)
-                        drawCircle(Color.White, radius = 2.5.dp.toPx(), center = head)
                     }
+                    // مقبض كبسولي أبيض كمنزلق المكتبة وهو في حالة الراحة.
+                    val thumbW = 18.dp.toPx()
+                    val thumbH = 11.dp.toPx()
+                    val cx = fill.coerceIn(thumbW / 2f, size.width - thumbW / 2f)
+                    val thumbTop = Offset(cx - thumbW / 2f, (size.height - thumbH) / 2f)
+                    val thumbRadius = CornerRadius(thumbH / 2f)
+                    drawRoundRect(
+                        Color.Black.copy(alpha = 0.25f),
+                        topLeft = Offset(thumbTop.x, thumbTop.y + 1.dp.toPx()),
+                        size = Size(thumbW, thumbH),
+                        cornerRadius = thumbRadius,
+                    )
+                    drawRoundRect(
+                        Color.White,
+                        topLeft = thumbTop,
+                        size = Size(thumbW, thumbH),
+                        cornerRadius = thumbRadius,
+                    )
                 },
         )
     }

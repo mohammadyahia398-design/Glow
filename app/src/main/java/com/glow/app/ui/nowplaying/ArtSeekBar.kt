@@ -34,6 +34,7 @@ fun ArtSeekBar(
     color: Color,
     description: String,
     modifier: Modifier = Modifier,
+    accent: Color = color,
 ) {
     val currentChange by rememberUpdatedState(onValueChange)
     val currentFinished by rememberUpdatedState(onValueChangeFinished)
@@ -80,7 +81,7 @@ fun ArtSeekBar(
                 cornerRadius = corner,
             )
             drawRoundRect(
-                color = color,
+                color = accent,
                 topLeft = Offset(0f, cy - trackHeight / 2f),
                 size = Size(x, trackHeight),
                 cornerRadius = corner,

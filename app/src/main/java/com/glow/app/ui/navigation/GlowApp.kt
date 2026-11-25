@@ -71,6 +71,7 @@ import com.glow.app.ui.nowplaying.ArtMiniPlayer
 import com.glow.app.ui.nowplaying.ArtMiniPlayerHeight
 import com.glow.app.ui.nowplaying.NowPlayingScreen
 import com.glow.app.ui.vocal.VocalIsolationScreen
+import com.glow.app.ui.common.GlowTopBar
 import com.glow.app.ui.theme.LocalGlowSkin
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlin.random.Random
@@ -152,6 +153,7 @@ fun GlowApp(settings: SettingsStore, modifier: Modifier = Modifier) {
     var collection by remember { mutableStateOf<MediaGroup?>(null) }
     var showPlayer by remember { mutableStateOf(false) }
     var showSettings by remember { mutableStateOf(false) }
+    var showVocal by remember { mutableStateOf(false) }
     var libraryTab by remember { mutableStateOf(LibraryTab.Tracks) }
     val barItems = remember {
         LibraryTab.barTabs.map { t ->
@@ -160,6 +162,7 @@ fun GlowApp(settings: SettingsStore, modifier: Modifier = Modifier) {
     }
     // أول معالج مسجَّل أقل أولوية: يُغلق المشغّل ثم الألبوم ثم الإعدادات.
     BackHandler(enabled = showSettings) { showSettings = false }
+    BackHandler(enabled = showVocal) { showVocal = false }
     BackHandler(enabled = showPlayer) { showPlayer = false }
     BackHandler(enabled = !showPlayer && collection != null) { collection = null }
 
@@ -181,7 +184,7 @@ fun GlowApp(settings: SettingsStore, modifier: Modifier = Modifier) {
     LaunchedEffect(current?.id) { current?.let { library.recordPlay(it.id) } }
 
     ProvideGlassConfig(glassConfig) {
-        val barVisible = !showSettings && collection == null && !showPlayer
+        val barVisible = !showSettings && !showVocal && collection == null && !showPlayer
         val miniVisible = current != null && !showPlayer
         Box(modifier.fillMaxSize()) {
             Box(
@@ -192,7 +195,12 @@ fun GlowApp(settings: SettingsStore, modifier: Modifier = Modifier) {
                     .background(Brush.verticalGradient(listOf(skin.bgTop, skin.bgBottom))),
             ) {
                 val open = collection
-                if (showSettings) {
+                if (showVocal) {
+                    Column(Modifier.fillMaxSize()) {
+                        GlowTopBar(title = null, onBack = { showVocal = false })
+                        VocalIsolationScreen(Modifier.weight(1f))
+                    }
+                } else if (showSettings) {
                     SettingsScreen(
                         store = settings,
                         onBack = { showSettings = false },
@@ -200,9 +208,8 @@ fun GlowApp(settings: SettingsStore, modifier: Modifier = Modifier) {
                         sleepEndsAt = sleepEndsAt,
                         onSleepTimer = { controller?.setSleepTimer(it) },
                         audioSessionId = playerState.audioSessionId,
+                        onOpenVocalIsolation = { showVocal = true },
                     )
-                } else if (open == null && libraryTab == LibraryTab.VocalIsolation) {
-                    VocalIsolationScreen(Modifier.fillMaxSize())
                 } else if (open == null) {
                     LibraryScreen(
                         tracks = visibleTracks,

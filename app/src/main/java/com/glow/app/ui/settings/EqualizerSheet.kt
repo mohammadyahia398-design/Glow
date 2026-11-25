@@ -11,7 +11,6 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
@@ -32,6 +31,8 @@ import androidx.compose.ui.unit.sp
 import com.glow.app.media.DeviceEqualizer
 import com.glow.app.liquid.backdrop.backdrops.rememberCanvasBackdrop
 import com.glow.app.liquid.ui.LiquidSlider
+import com.glow.app.liquid.ui.LiquidToggle
+import com.glow.app.ui.common.GlowChip
 import com.glow.app.ui.glass.core.rememberGlassTier
 import com.glow.app.ui.theme.LocalGlowSkin
 import kotlin.math.roundToInt
@@ -105,12 +106,22 @@ fun EqualizerSheet(
                         Text("تفعيل المعادل", color = skin.text, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
                         Text("يطبّق التأثير على جلسة الصوت الحالية", color = skin.textSecondary, fontSize = 12.sp)
                     }
-                    Switch(
-                        checked = enabled,
-                        onCheckedChange = {
-                            enabled = engine.setEnabled(it)
-                        },
-                    )
+                    if (glassTier.supportsRefraction) {
+                        LiquidToggle(
+                            selected = { enabled },
+                            onSelect = { enabled = engine.setEnabled(it) },
+                            backdrop = eqBackdrop,
+                            accentColor = skin.accent,
+                            trackColor = skin.textSecondary.copy(alpha = 0.35f),
+                        )
+                    } else {
+                        Switch(
+                            checked = enabled,
+                            onCheckedChange = {
+                                enabled = engine.setEnabled(it)
+                            },
+                        )
+                    }
                 }
 
                 Text("الإعدادات المسبقة", color = skin.text, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
@@ -119,7 +130,8 @@ fun EqualizerSheet(
                     modifier = Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 18.dp),
                 ) {
                     itemsIndexed(presets) { index, name ->
-                        FilterChip(
+                        GlowChip(
+                            label = name.ifBlank { "Preset ${index}" },
                             selected = selectedPreset == index,
                             onClick = {
                                 selectedPreset = index
@@ -128,7 +140,6 @@ fun EqualizerSheet(
                                     enabled = engine.setEnabled(true)
                                 }
                             },
-                            label = { Text(name.ifBlank { "Preset ${index}" }) },
                         )
                     }
                 }

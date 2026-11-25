@@ -35,6 +35,7 @@ import com.glow.app.ui.common.GlowIcon
 import com.glow.app.ui.common.GlowIconTap
 import com.glow.app.ui.common.IconKind
 import com.glow.app.ui.common.formatTime
+import com.glow.app.ui.theme.LocalGlowSkin
 
 /** شريط التقدم مع الزمن، وصف أزرار: خلط، سابق، تشغيل، تالٍ، تكرار. كلها بلون [contentColor]. */
 @Composable
@@ -53,6 +54,7 @@ fun NowPlayingControls(
     var drag by remember { mutableStateOf<Float?>(null) }
     val value = drag ?: state.progress
     val dim = contentColor.copy(alpha = 0.75f)
+    val accent = LocalGlowSkin.current.accent
 
     Column(modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
         val finishSeek = {
@@ -69,7 +71,7 @@ fun NowPlayingControls(
                     valueRange = 0f..1f,
                     visibilityThreshold = 0.001f,
                     backdrop = liquidBackdrop,
-                    accentColor = contentColor,
+                    accentColor = accent,
                     trackColor = contentColor.copy(alpha = 0.30f),
                     onValueChangeFinished = { finishSeek() },
                     modifier = Modifier
@@ -91,6 +93,7 @@ fun NowPlayingControls(
                 onValueChangeFinished = { finishSeek() },
                 color = contentColor,
                 description = "التقدم",
+                accent = accent,
             )
         }
         Row(

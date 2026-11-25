@@ -1,5 +1,6 @@
 package com.glow.app.ui.nowplaying
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -13,13 +14,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import com.glow.app.ui.common.GlowTextButton
+import com.glow.app.ui.common.GlowOutlinedButton
+import com.glow.app.liquid.ui.LiquidButton
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -98,16 +101,55 @@ fun NowPlayingScreen(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(top = 4.dp),
             )
-            Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                GlowIconTap("فتح قائمة التشغيل", { showQueue = true }, size = 44.dp) {
-                    GlowIcon(IconKind.Playlist, skin.accentText, 22.dp)
-                }
-                GlowTextButton(onClick = { showQueue = true }) {
-                    Text("قائمة التشغيل · ${state.queue.size}", color = skin.accentText, fontSize = 13.sp)
-                }
-                Spacer(Modifier.weight(1f))
-                GlowIconTap("فتح المعادل الصوتي", { showEqualizer = true }, size = 44.dp) {
-                    GlowIcon(IconKind.Equalizer, skin.accentText, 22.dp)
+            Row(
+                Modifier.fillMaxWidth().padding(top = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                val queueLabel = "قائمة التشغيل · ${state.queue.size}"
+                if (useGlass) {
+                    val surface = Color.White.copy(alpha = 0.12f)
+                    LiquidButton(
+                        onClick = { showQueue = true },
+                        backdrop = liquidBackdrop,
+                        modifier = Modifier.weight(1f),
+                        surfaceColor = surface,
+                    ) {
+                        GlowIcon(IconKind.Playlist, contentColor, 20.dp)
+                        Text(
+                            queueLabel,
+                            color = contentColor,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                    LiquidButton(
+                        onClick = { showEqualizer = true },
+                        backdrop = liquidBackdrop,
+                        modifier = Modifier.weight(1f),
+                        surfaceColor = surface,
+                    ) {
+                        GlowIcon(IconKind.Equalizer, contentColor, 20.dp)
+                        Text(
+                            "المعادل",
+                            color = contentColor,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                } else {
+                    GlowOutlinedButton(onClick = { showQueue = true }, modifier = Modifier.weight(1f)) {
+                        GlowIcon(IconKind.Playlist, skin.accentText, 20.dp)
+                        Text(queueLabel, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                    GlowOutlinedButton(onClick = { showEqualizer = true }, modifier = Modifier.weight(1f)) {
+                        GlowIcon(IconKind.Equalizer, skin.accentText, 20.dp)
+                        Text("المعادل", maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
                 }
             }
             Spacer(Modifier.weight(1f))
