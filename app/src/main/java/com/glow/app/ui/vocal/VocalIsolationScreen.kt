@@ -22,6 +22,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import com.glow.app.ui.common.GlowFilledButton
+import com.glow.app.ui.common.GlowOutlinedButton
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
@@ -150,12 +152,11 @@ fun VocalIsolationScreen(modifier: Modifier = Modifier) {
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
-            OutlinedButton(
+            GlowOutlinedButton(
                 onClick = { picker.launch(arrayOf("audio/*")) },
                 enabled = !busy,
                 modifier = Modifier.fillMaxWidth().height(52.dp),
-                shape = RoundedCornerShape(17.dp),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = skin.accentText),
+                contentColor = skin.accentText,
             ) {
                 Text(if (selectedUri == null) "اختيار أغنية من الجهاز" else "تغيير الأغنية")
             }
@@ -207,7 +208,7 @@ fun VocalIsolationScreen(modifier: Modifier = Modifier) {
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                OutlinedButton(
+                GlowOutlinedButton(
                     onClick = {
                         scope.launch {
                             healthState = "checking"
@@ -224,8 +225,7 @@ fun VocalIsolationScreen(modifier: Modifier = Modifier) {
                     },
                     enabled = !busy && healthState != "checking" && endpoint.startsWith("https://"),
                     modifier = Modifier.weight(1f).height(48.dp),
-                    shape = RoundedCornerShape(15.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = skin.accentText),
+                    contentColor = skin.accentText,
                 ) {
                     if (healthState == "checking") {
                         CircularProgressIndicator(
@@ -259,13 +259,13 @@ fun VocalIsolationScreen(modifier: Modifier = Modifier) {
                 fontSize = 13.sp,
                 lineHeight = 21.sp,
             )
-            Button(
+            GlowFilledButton(
                 onClick = {
-                    val uri = selectedUri ?: return@Button
+                    val uri = selectedUri ?: return@GlowFilledButton
                     if (!endpoint.startsWith("https://")) {
                         phase = "error"
                         status = "أدخل عنوان خادم صحيحاً يبدأ بـ https://"
-                        return@Button
+                        return@GlowFilledButton
                     }
                     work = scope.launch {
                         phase = "uploading"
@@ -309,13 +309,6 @@ fun VocalIsolationScreen(modifier: Modifier = Modifier) {
                 },
                 enabled = selectedUri != null && !busy && endpoint.startsWith("https://"),
                 modifier = Modifier.fillMaxWidth().height(58.dp),
-                shape = RoundedCornerShape(18.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = skin.accent,
-                    contentColor = skin.onAccent,
-                    disabledContainerColor = skin.chip,
-                    disabledContentColor = skin.textSecondary,
-                ),
             ) {
                 Text(
                     when (phase) {
@@ -334,7 +327,7 @@ fun VocalIsolationScreen(modifier: Modifier = Modifier) {
                     color = skin.accent,
                     trackColor = skin.chip,
                 )
-                OutlinedButton(
+                GlowOutlinedButton(
                     onClick = {
                         val id = predictionId
                         if (id.isBlank()) {
@@ -353,8 +346,7 @@ fun VocalIsolationScreen(modifier: Modifier = Modifier) {
                         }
                     },
                     modifier = Modifier.fillMaxWidth().height(48.dp),
-                    shape = RoundedCornerShape(15.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFFF8A78)),
+                    contentColor = Color(0xFFFF8A78),
                 ) {
                     Text(if (predictionId.isBlank()) "إيقاف الرفع" else "إلغاء المعالجة")
                 }
@@ -387,22 +379,16 @@ fun VocalIsolationScreen(modifier: Modifier = Modifier) {
                     color = skin.textSecondary,
                     fontSize = 12.sp,
                 )
-                Button(
+                GlowFilledButton(
                     onClick = { openResult(context, file) },
                     modifier = Modifier.fillMaxWidth().height(50.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = skin.accent,
-                        contentColor = skin.onAccent,
-                    ),
                 ) {
                     Text("تشغيل صوت المغني")
                 }
-                OutlinedButton(
+                GlowOutlinedButton(
                     onClick = { shareResult(context, file) },
                     modifier = Modifier.fillMaxWidth().height(48.dp),
-                    shape = RoundedCornerShape(15.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = skin.accentText),
+                    contentColor = skin.accentText,
                 ) {
                     Text("مشاركة الملف الناتج")
                 }

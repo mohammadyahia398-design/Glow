@@ -19,6 +19,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import com.glow.app.ui.common.GlowRoundButton
+import com.glow.app.ui.common.GlowTextButton
+import com.glow.app.ui.icons.CoreGlyphs
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -66,7 +69,7 @@ fun QueueSheet(
                         fontSize = 13.sp,
                     )
                 }
-                TextButton(onClick = onClearUpcoming, enabled = state.upcomingCount > 0) {
+                GlowTextButton(onClick = onClearUpcoming, enabled = state.upcomingCount > 0) {
                     Text("مسح القادم", color = skin.accentText)
                 }
             }
@@ -146,16 +149,13 @@ private fun QueueTrackRow(
             )
         }
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            IconButton(onClick = onMoveUp, enabled = canMoveUp, modifier = Modifier.size(34.dp)) {
-                Text("↑", color = if (canMoveUp) skin.text else skin.textSecondary.copy(alpha = 0.25f), fontSize = 17.sp)
-            }
+            GlowRoundButton(CoreGlyphs.Up, "نقل للأعلى", onMoveUp, enabled = canMoveUp, size = 32.dp)
             Text("${index + 1}", color = skin.textSecondary, fontSize = 10.sp)
-            IconButton(onClick = onMoveDown, enabled = canMoveDown, modifier = Modifier.size(34.dp)) {
-                Text("↓", color = if (canMoveDown) skin.text else skin.textSecondary.copy(alpha = 0.25f), fontSize = 17.sp)
-            }
+            GlowRoundButton(CoreGlyphs.Down, "نقل للأسفل", onMoveDown, enabled = canMoveDown, size = 32.dp)
         }
-        IconButton(onClick = onRemove, modifier = Modifier.size(38.dp)) {
-            Text("×", color = skin.textSecondary, fontSize = 21.sp)
-        }
+        GlowRoundButton(
+            CoreGlyphs.Close, "إزالة من القائمة", onRemove,
+            size = 36.dp, tint = skin.textSecondary,
+        )
     }
 }

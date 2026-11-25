@@ -34,6 +34,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -215,23 +216,38 @@ private fun speedLabel(s: Float) = if (s == 1f) "عادية (×1.0)" else "×$s"
 @Composable
 private fun Section(title: String, content: @Composable () -> Unit) {
     val skin = LocalGlowSkin.current
+    val shape = RoundedCornerShape(24.dp)
     Text(
         title,
-        color = skin.text,
-        fontSize = 19.sp,
+        color = skin.textSecondary,
+        fontSize = 13.sp,
         fontWeight = FontWeight.SemiBold,
-        modifier = Modifier.padding(start = 28.dp, end = 28.dp, top = 26.dp, bottom = 10.dp),
+        letterSpacing = 0.6.sp,
+        modifier = Modifier.padding(start = 32.dp, end = 32.dp, top = 24.dp, bottom = 8.dp),
     )
     Column(
         Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
-            .clip(RoundedCornerShape(24.dp))
-            .background(skin.panel),
+            .clip(shape)
+            .background(
+                Brush.verticalGradient(
+                    listOf(skin.panel.copy(alpha = 0.98f), skin.panel.copy(alpha = 0.80f)),
+                ),
+            )
+            .drawBehind {
+                drawRect(
+                    Brush.verticalGradient(
+                        listOf(Color.White.copy(alpha = if (skin.isDark) 0.07f else 0.40f), Color.Transparent),
+                        endY = size.height * 0.5f,
+                    ),
+                )
+            }
+            .border(1.dp, skin.glassBorder.copy(alpha = 0.55f), shape),
     ) { content() }
 }
 
-/** صف إعداد: أيقونة، عنوان، قيمة اختيارية، ثم سهم أو عنصر مخصص (مثل Switch). */
+/** صف إعداد: أيقونة داخل مربّع بلون التمييز، عنوان، قيمة اختيارية، ثم سهم أو عنصر مخصص (مثل Switch). */
 @Composable
 private fun Item(
     icon: IconKind,
@@ -246,15 +262,24 @@ private fun Item(
         Modifier
             .fillMaxWidth()
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
-            .padding(horizontal = 18.dp, vertical = 16.dp),
+            .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        GlowIcon(icon, skin.text, 24.dp)
-        Spacer(Modifier.width(16.dp))
+        Box(
+            Modifier
+                .size(36.dp)
+                .clip(RoundedCornerShape(11.dp))
+                .background(skin.accent.copy(alpha = 0.16f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            GlowIcon(icon, skin.accentText, 22.dp)
+        }
+        Spacer(Modifier.width(14.dp))
         Text(
             title,
             color = skin.text,
             fontSize = 16.sp,
+            fontWeight = FontWeight.Medium,
             modifier = Modifier.weight(1f),
         )
         if (value != null) {
@@ -266,18 +291,18 @@ private fun Item(
             trailing()
         } else if (chevron) {
             Spacer(Modifier.width(6.dp))
-            GlowIcon(IconKind.Chevron, skin.textSecondary, 18.dp)
+            GlowIcon(IconKind.Chevron, skin.textSecondary.copy(alpha = 0.7f), 18.dp)
         }
     }
 }
 
 @Composable
 private fun Divider() {
-    // يبدأ بعد الأيقونة (18 + 24 + 16)
+    // يبدأ بعد مربّع الأيقونة (16 + 36 + 14)
     Box(
         Modifier
             .fillMaxWidth()
-            .padding(start = 58.dp)
+            .padding(start = 66.dp, end = 16.dp)
             .height(0.5.dp)
             .background(LocalGlowSkin.current.divider),
     )

@@ -19,7 +19,11 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import com.glow.app.ui.icons.CoreGlyphs
 import com.glow.app.ui.icons.Glyph
+import com.glow.app.ui.icons.IconStyle
+import com.glow.app.ui.icons.LocalIconStyle
+import com.glow.app.ui.icons.TransportGlyphs
 import com.glow.app.ui.icons.GlowGlyph
 import com.glow.app.ui.icons.MusicGlyphs
 import kotlin.math.cos
@@ -35,7 +39,9 @@ enum class IconKind {
 fun GlowIcon(kind: IconKind, tint: Color, size: Dp = 24.dp, modifier: Modifier = Modifier) {
     val glyph = kind.newGlyph()
     if (glyph != null) {
-        GlowGlyph(glyph, modifier, tint, size)
+        // أزرار التحكم الرئيسية ممتلئة (أوضح وأثبت على الغلاف)، والباقي خطّي بنمط المحرّك.
+        val style = if (kind.isSolidTransport()) IconStyle.Solid else LocalIconStyle.current
+        GlowGlyph(glyph, modifier, tint, size, style = style)
         return
     }
     val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
@@ -49,8 +55,34 @@ fun GlowIcon(kind: IconKind, tint: Color, size: Dp = 24.dp, modifier: Modifier =
 private fun IconKind.newGlyph(): Glyph? = when (this) {
     IconKind.Note -> MusicGlyphs.Note
     IconKind.Album -> MusicGlyphs.AlbumFrame
-    else -> null
+    IconKind.Back -> CoreGlyphs.Back
+    IconKind.Down -> CoreGlyphs.Down
+    IconKind.Chevron -> CoreGlyphs.Chevron
+    IconKind.Check -> CoreGlyphs.Check
+    IconKind.Search -> CoreGlyphs.Search
+    IconKind.More -> CoreGlyphs.More
+    IconKind.Menu -> CoreGlyphs.Menu
+    IconKind.Settings -> CoreGlyphs.Settings
+    IconKind.Artist -> CoreGlyphs.Artist
+    IconKind.Heart -> CoreGlyphs.Heart
+    IconKind.Playlist -> CoreGlyphs.Playlist
+    IconKind.Speed -> CoreGlyphs.Speed
+    IconKind.Moon -> CoreGlyphs.Moon
+    IconKind.Timer -> CoreGlyphs.Timer
+    IconKind.Refresh -> CoreGlyphs.Refresh
+    IconKind.Equalizer -> CoreGlyphs.Equalizer
+    IconKind.Info -> com.glow.app.ui.icons.MotionGlyphs.Info
+    IconKind.Play -> TransportGlyphs.Play
+    IconKind.Pause -> TransportGlyphs.Pause
+    IconKind.Next -> TransportGlyphs.Next
+    IconKind.Prev -> TransportGlyphs.Previous
+    IconKind.Shuffle -> TransportGlyphs.Shuffle
+    IconKind.Repeat -> TransportGlyphs.Repeat
+    IconKind.RepeatOne -> TransportGlyphs.RepeatOne
 }
+
+private fun IconKind.isSolidTransport(): Boolean =
+    this == IconKind.Play || this == IconKind.Pause || this == IconKind.Next || this == IconKind.Prev
 
 private fun DrawScope.paintIcon(kind: IconKind, c: Color) {
     val w = size.width

@@ -189,7 +189,7 @@ fun EqualizerSheet(
                     Modifier.fillMaxWidth().padding(top = 12.dp),
                     horizontalArrangement = Arrangement.End,
                 ) {
-                    androidx.compose.material3.TextButton(onClick = {
+                    com.glow.app.ui.common.GlowTextButton(onClick = {
                         if (engine.resetFlat()) {
                             refreshLevels(engine, levels)
                             selectedPreset = 0

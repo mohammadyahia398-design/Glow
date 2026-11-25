@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import com.glow.app.ui.common.GlowTextButton
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
@@ -101,7 +102,7 @@ fun NowPlayingScreen(
                 GlowIconTap("فتح قائمة التشغيل", { showQueue = true }, size = 44.dp) {
                     GlowIcon(IconKind.Playlist, skin.accentText, 22.dp)
                 }
-                TextButton(onClick = { showQueue = true }) {
+                GlowTextButton(onClick = { showQueue = true }) {
                     Text("قائمة التشغيل · ${state.queue.size}", color = skin.accentText, fontSize = 13.sp)
                 }
                 Spacer(Modifier.weight(1f))
