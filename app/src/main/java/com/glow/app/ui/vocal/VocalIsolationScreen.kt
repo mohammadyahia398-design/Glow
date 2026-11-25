@@ -24,10 +24,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import com.glow.app.ui.common.GlowFilledButton
 import com.glow.app.ui.common.GlowOutlinedButton
+import com.glow.app.ui.common.GlowProgressBar
+import com.glow.app.ui.common.GlowRingLoader
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -228,11 +228,7 @@ fun VocalIsolationScreen(modifier: Modifier = Modifier) {
                     contentColor = skin.accentText,
                 ) {
                     if (healthState == "checking") {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(17.dp),
-                            strokeWidth = 2.dp,
-                            color = skin.accent,
-                        )
+                        GlowRingLoader(diameter = 20.dp, strokeWidth = 2.dp, color = skin.accent)
                         Spacer(Modifier.size(8.dp))
                     }
                     Text("اختبار الاتصال")
@@ -322,11 +318,7 @@ fun VocalIsolationScreen(modifier: Modifier = Modifier) {
                 )
             }
             if (busy) {
-                LinearProgressIndicator(
-                    modifier = Modifier.fillMaxWidth(),
-                    color = skin.accent,
-                    trackColor = skin.chip,
-                )
+                GlowProgressBar(color = skin.accent)
                 GlowOutlinedButton(
                     onClick = {
                         val id = predictionId
