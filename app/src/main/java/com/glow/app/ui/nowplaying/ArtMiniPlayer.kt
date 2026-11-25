@@ -60,6 +60,9 @@ val ArtMiniPlayerHeight = 92.dp
 private val SliderZone = 36.dp
 private val SliderBottomGap = 4.dp
 
+/** الهامش الأفقي الموحّد: الغلاف وبداية المنزلق ونهايته على خط واحد، ويبقى المقبض المضغوط داخل الكبسولة. */
+private val EdgeInset = 30.dp
+
 /**
  * المشغّل المصغّر بهوية Glow: كبسولة زجاجية سائلة بألوان الهوية فقط (سطح محايد + لون التمييز)،
  * أزرار موحّدة مع بقية التطبيق، ومنزلق سائل يبقى كله داخل الكبسولة.
@@ -80,8 +83,13 @@ fun ArtMiniPlayer(
 ) {
     val skin = LocalGlowSkin.current
     val refraction = rememberGlassTier().supportsRefraction
-    val shape = RoundedCornerShape(36.dp)
+    val shape = RoundedCornerShape(50)
     val surface = skin.panel
+    // نفس لون وشفافية حاوية الشريط السفلي، فيبدوان من قطعة زجاج واحدة.
+    val container =
+        if (skin.isDark) Color(0xFF121212).copy(alpha = 0.40f)
+        else Color(0xFFFAFAFA).copy(alpha = 0.40f)
+    val glass = refraction && backdrop != null
 
     val surfaceModifier =
         if (refraction && backdrop != null) {
@@ -91,9 +99,9 @@ fun ArtMiniPlayer(
                 effects = {
                     vibrancy()
                     blur(8f.dp.toPx())
-                    lens(16f.dp.toPx(), 16f.dp.toPx())
+                    lens(24f.dp.toPx(), 24f.dp.toPx())
                 },
-                onDrawSurface = { drawRect(surface.copy(alpha = 0.62f)) },
+                onDrawSurface = { drawRect(container) },
             )
         } else {
             Modifier.background(surface.copy(alpha = 0.97f), shape)
@@ -105,23 +113,23 @@ fun ArtMiniPlayer(
             .height(ArtMiniPlayerHeight)
             .then(surfaceModifier)
             .clip(shape)
-            .border(1.dp, skin.glassBorder.copy(alpha = 0.30f), shape)
+            .then(if (glass) Modifier else Modifier.border(1.dp, skin.glassBorder.copy(alpha = 0.30f), shape))
             .clickable(role = Role.Button, onClick = onClick),
     ) {
         Row(
             Modifier
                 .fillMaxWidth()
                 .height(ArtMiniPlayerHeight - SliderZone - SliderBottomGap)
-                .padding(start = 14.dp, end = 10.dp, top = 8.dp),
+                .padding(start = EdgeInset, end = EdgeInset - 11.dp, top = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            AlbumArt(track, Modifier.size(40.dp), radius = 14.dp)
+            AlbumArt(track, Modifier.size(44.dp), radius = 22.dp)
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(
                     text = track.title,
                     color = skin.text,
-                    fontSize = 16.sp,
+                    fontSize = 15.5.sp,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -138,10 +146,10 @@ fun ArtMiniPlayer(
                 GlowIcon(IconKind.Prev, skin.text.copy(alpha = 0.9f), 22.dp)
             }
             // زر التشغيل: نفس تدرّج وحافة GlowFilledButton، بلا ألوان إضافية.
-            GlowIconTap(if (isPlaying) "إيقاف مؤقت" else "تشغيل", onTogglePlay, size = 48.dp) {
+            GlowIconTap(if (isPlaying) "إيقاف مؤقت" else "تشغيل", onTogglePlay, size = 44.dp) {
                 Box(
                     Modifier
-                        .size(42.dp)
+                        .size(40.dp)
                         .clip(CircleShape)
                         .background(
                             Brush.verticalGradient(
@@ -179,7 +187,7 @@ fun ArtMiniPlayer(
                     },
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
-                        .padding(horizontal = 36.dp)
+                        .padding(horizontal = EdgeInset)
                         .padding(bottom = SliderBottomGap)
                         .height(SliderZone),
                 )
@@ -189,7 +197,7 @@ fun ArtMiniPlayer(
                 Modifier
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
-                    .padding(horizontal = 36.dp)
+                    .padding(horizontal = EdgeInset)
                     .padding(bottom = SliderBottomGap + (SliderZone - 12.dp) / 2)
                     .height(12.dp)
                     .drawBehind {
