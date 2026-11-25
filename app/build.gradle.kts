@@ -16,6 +16,15 @@ android {
         versionName = "0.1.0"
     }
 
+    signingConfigs {
+        getByName("debug") {
+            storeFile = file("glow-debug-signing.dat")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
