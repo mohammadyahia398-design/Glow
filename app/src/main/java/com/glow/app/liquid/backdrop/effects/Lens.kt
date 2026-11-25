@@ -7,6 +7,7 @@ package com.glow.app.liquid.backdrop.effects
 import androidx.annotation.FloatRange
 import androidx.compose.foundation.shape.AbsoluteRoundedCornerShape
 import androidx.compose.foundation.shape.CornerBasedShape
+import androidx.compose.ui.geometry.isSpecified
 import androidx.compose.ui.unit.LayoutDirection
 import com.glow.app.liquid.backdrop.BackdropEffectScope
 import com.glow.app.liquid.backdrop.internal.RoundedRectRefractionShaderString
@@ -22,6 +23,10 @@ fun BackdropEffectScope.lens(
 ) {
     if (!isRuntimeShaderSupported()) return
     if (refractionHeight <= 0f || refractionAmount <= 0f) return
+
+    // عند ربط العقدة لا يُعرف الحجم بعد (Size.Unspecified) فيرمي minDimension استثناءً؛
+    // يكفي هنا أن تُسجَّل قراءات الحالة، وتُعاد الحسابات بالحجم الحقيقي عند أول رسم.
+    if (!size.isSpecified) return
 
     if (padding > 0f) {
         padding = (padding - refractionHeight).coerceAtLeast(0f)
