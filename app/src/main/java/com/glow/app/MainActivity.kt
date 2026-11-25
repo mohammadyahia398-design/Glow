@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -52,9 +53,13 @@ class MainActivity : ComponentActivity() {
                 // آخر انهيار (إن حدث) يُعرض مرة واحدة ليُنسخ ويُرسل.
                 var crash by rememberSaveable { mutableStateOf(CrashReporter.take(this@MainActivity)) }
                 val clipboard = LocalClipboardManager.current
-                Box(Modifier.fillMaxSize()) {
-                    GlowApp(settings, Modifier.fillMaxSize())
-                    if (showSplash) GlowSplash(onFinished = { showSplash = false })
+                Box(Modifier.fillMaxSize().background(skin.bgTop)) {
+                    // عند وجود انهيار سابق نعرضه وحده أولاً؛ لا نبني الواجهة قبل إغلاق النافذة،
+                    // وإلا انهار التطبيق من جديد قبل أن يراها المستخدم.
+                    if (crash == null) {
+                        GlowApp(settings, Modifier.fillMaxSize())
+                        if (showSplash) GlowSplash(onFinished = { showSplash = false })
+                    }
                     crash?.let { report ->
                         GlowDialog(
                             title = "التطبيق أُغلق فجأة",
