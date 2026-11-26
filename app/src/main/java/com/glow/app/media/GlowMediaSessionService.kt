@@ -21,6 +21,7 @@ import android.os.SystemClock
 import androidx.core.content.ContextCompat
 import com.glow.app.MainActivity
 import com.glow.app.ui.common.loadTrackArtwork
+import com.glow.app.widget.GlowWidget
 import kotlin.math.abs
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -155,6 +156,7 @@ class GlowMediaSessionService : Service() {
         session.release()
         controller.release()
         notificationManager.cancel(NOTIFICATION_ID)
+        GlowWidget.update(applicationContext, null, null)
         super.onDestroy()
     }
 
@@ -177,6 +179,7 @@ class GlowMediaSessionService : Service() {
             if (latest.current?.id != track.id) return@launch
             updateSession(latest)
             notificationManager.notify(NOTIFICATION_ID, notifier.build(latest, session.sessionToken, bmp))
+            GlowWidget.update(applicationContext, latest, bmp)
         }
     }
 
@@ -187,6 +190,7 @@ class GlowMediaSessionService : Service() {
         val key = state.current?.id to state.isPlaying
         if (key == lastKey) return
         lastKey = key
+        GlowWidget.update(applicationContext, state, artFor(state.current))
 
         val notification = notifier.build(state, session.sessionToken, artFor(state.current))
         when {
