@@ -1,6 +1,9 @@
 package com.glow.app.ui.online
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -26,16 +29,25 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.glow.app.media.Track
 import com.glow.app.online.AudiusClient
+import com.glow.app.online.TrackDownloader
+import com.glow.app.settings.LibraryStore
+import com.glow.app.ui.common.AlbumArt
+import com.glow.app.ui.common.GlowDialog
+import com.glow.app.ui.common.GlowDialogAction
+import com.glow.app.ui.common.GlowDialogRow
 import com.glow.app.ui.common.GlowEmptyState
+import com.glow.app.ui.common.GlowIconTap
+import com.glow.app.ui.common.LocalGlowSnackbar
 import com.glow.app.ui.common.GlowIcon
 import com.glow.app.ui.common.GlowLoading
 import com.glow.app.ui.common.IconKind
-import com.glow.app.ui.common.MediaRow
 import com.glow.app.ui.common.formatTime
 import com.glow.app.ui.library.LibraryBottomInset
 import com.glow.app.ui.theme.LocalGlowSkin
@@ -53,6 +65,7 @@ private sealed interface OnlineState {
 @Composable
 fun OnlineSearchScreen(
     currentId: Long?,
+    store: LibraryStore,
     onPlay: (List<Track>, Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -61,6 +74,9 @@ fun OnlineSearchScreen(
     var retry by remember { mutableStateOf(0) }
     var state by remember { mutableStateOf<OnlineState>(OnlineState.Idle) }
     val focus = remember { FocusRequester() }
+    val context = LocalContext.current
+    val snackbar = LocalGlowSnackbar.current
+    var menuFor by remember { mutableStateOf<Track?>(null) }
     LaunchedEffect(Unit) { focus.requestFocus() }
 
     LaunchedEffect(query, retry) {
@@ -136,18 +152,66 @@ fun OnlineSearchScreen(
                 } else {
                     LazyColumn(contentPadding = PaddingValues(top = 8.dp, bottom = LibraryBottomInset)) {
                         itemsIndexed(s.tracks, key = { _, t -> t.id }) { i, t ->
-                            MediaRow(
-                                art = null,
-                                title = t.title,
-                                subtitle = t.artist,
-                                trailing = if (t.durationMs > 0) formatTime(t.durationMs) else null,
-                                highlight = t.id == currentId,
-                                onClick = { onPlay(s.tracks, i) },
-                                leading = { GlowIcon(IconKind.Note, skin.accentText, 22.dp) },
-                            )
+                            Row(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .clickable { onPlay(s.tracks, i) }
+                                    .padding(start = 20.dp, end = 4.dp, top = 7.dp, bottom = 7.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            ) {
+                                AlbumArt(t, Modifier.size(52.dp), radius = 14.dp)
+                                Column(Modifier.weight(1f)) {
+                                    Text(
+                                        t.title,
+                                        color = if (t.id == currentId) skin.accentText else skin.text,
+                                        fontSize = 16.sp,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                    Text(
+                                        if (t.durationMs > 0) t.artist + " · " + formatTime(t.durationMs) else t.artist,
+                                        color = skin.textSecondary,
+                                        fontSize = 13.sp,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                }
+                                GlowIconTap("المزيد", { menuFor = t }) {
+                                    GlowIcon(IconKind.More, skin.textSecondary, 22.dp, Modifier.align(Alignment.Center))
+                                }
+                            }
                         }
                     }
                 }
+            }
+        }
+    }
+    menuFor?.let { t ->
+        val isFav = t.id in store.favorites
+        GlowDialog(
+            title = t.title,
+            onDismiss = { menuFor = null },
+            actions = { GlowDialogAction("إغلاق", { menuFor = null }) },
+        ) {
+            GlowDialogRow(if (isFav) "إزالة من المفضلة" else "إضافة إلى المفضلة", {
+                val added = store.toggleOnlineFavorite(t)
+                snackbar?.show(if (added) "أُضيف إلى المفضلة" else "أُزيل من المفضلة")
+                menuFor = null
+            })
+            if (t.downloadUrl != null) {
+                GlowDialogRow("تحميل", {
+                    val ok = TrackDownloader.start(context, t)
+                    snackbar?.show(if (ok) "بدأ التحميل إلى مجلد Music/Glow" else "تعذّر بدء التحميل")
+                    menuFor = null
+                })
+            } else {
+                Text(
+                    "التحميل غير متاح لهذه الأغنية (صاحبها لم يسمح به).",
+                    color = skin.textSecondary,
+                    fontSize = 13.sp,
+                    modifier = Modifier.padding(vertical = 8.dp),
+                )
             }
         }
     }

@@ -171,7 +171,9 @@ fun LibraryScreen(
             .map { (name, list) -> MediaGroup(name, "", list[0], list) }
             .sortedBy { it.title.lowercase() }
     }
-    val favorites = remember(sorted, store.favorites) { sorted.filter { it.id in store.favorites } }
+    val favorites = remember(sorted, store.favorites, store.onlineTracks) {
+        sorted.filter { it.id in store.favorites } + store.onlineTracks.filter { it.id in store.favorites }
+    }
     val recent = remember(byId, store.recents) { store.recents.mapNotNull { byId[it] } }
     val most = remember(tracks, store.playCounts) {
         tracks.filter { (store.playCounts[it.id] ?: 0) > 0 }

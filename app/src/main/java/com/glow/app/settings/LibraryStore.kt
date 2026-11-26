@@ -1,6 +1,8 @@
 package com.glow.app.settings
 
 import android.content.Context
+import android.net.Uri
+import com.glow.app.media.Track
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -28,9 +30,32 @@ class LibraryStore(context: Context) {
     var playlists by mutableStateOf(readPlaylists())
         private set
 
+    /** أغاني الإنترنت المحفوظة في المفضلة (بياناتها كاملة لتظهر في تبويب المفضلة). */
+    var onlineTracks by mutableStateOf(readOnline())
+        private set
+
     fun toggleFavorite(trackId: Long) {
         favorites = if (trackId in favorites) favorites - trackId else favorites + trackId
         prefs.edit().putString("fav", favorites.joinToString(",")).apply()
+    }
+
+    /** يبدّل مفضلة أغنية إنترنتية. @return true إن أُضيفت. */
+    fun toggleOnlineFavorite(track: Track): Boolean {
+        val add = track.id !in favorites
+        val others = onlineTracks.filter { it.id != track.id }
+        onlineTracks = if (add) others + track else others
+        val arr = JSONArray()
+        onlineTracks.forEach { t ->
+            arr.put(
+                JSONObject()
+                    .put("id", t.id).put("title", t.title).put("artist", t.artist)
+                    .put("dur", t.durationMs).put("uri", t.uri.toString()).put("genre", t.genre)
+                    .put("art", t.artworkUrl ?: "").put("dl", t.downloadUrl ?: ""),
+            )
+        }
+        prefs.edit().putString("online", arr.toString()).apply()
+        toggleFavorite(track.id)
+        return add
     }
 
     fun recordPlay(trackId: Long) {
@@ -98,6 +123,25 @@ class LibraryStore(context: Context) {
             val n = parts.getOrNull(1)?.toIntOrNull()
             if (id != null && n != null) id to n else null
         }.toMap()
+
+    private fun readOnline(): List<Track> = runCatching {
+        val arr = JSONArray(prefs.getString("online", "[]"))
+        (0 until arr.length()).map { i ->
+            val o = arr.getJSONObject(i)
+            Track(
+                id = o.getLong("id"),
+                title = o.getString("title"),
+                artist = o.getString("artist"),
+                album = "Audius",
+                albumId = -1L,
+                durationMs = o.optLong("dur"),
+                uri = Uri.parse(o.getString("uri")),
+                genre = o.optString("genre"),
+                artworkUrl = o.optString("art").ifBlank { null },
+                downloadUrl = o.optString("dl").ifBlank { null },
+            )
+        }
+    }.getOrDefault(emptyList())
 
     private fun readPlaylists(): List<Playlist> = runCatching {
         val arr = JSONArray(prefs.getString("playlists", "[]"))

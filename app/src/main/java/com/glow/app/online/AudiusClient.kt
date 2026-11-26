@@ -52,6 +52,11 @@ object AudiusClient {
                     artworkUrl = o.optJSONObject("artwork")
                         ?.let { a -> a.optString("480x480").ifBlank { a.optString("150x150") } }
                         ?.ifBlank { null },
+                    downloadUrl = if (o.optBoolean("is_downloadable", false) && !o.optBoolean("is_download_gated", false)) {
+                        "$BASE/tracks/$id/download?app_name=$APP"
+                    } else {
+                        null
+                    },
                 ),
             )
         }
