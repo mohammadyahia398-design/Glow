@@ -40,14 +40,10 @@ fun GlowLiquidBottomBar(
     val ordered = remember(items, systemRtl) { if (systemRtl) items.asReversed() else items }
     val selectedIndex = ordered.indexOfFirst { it.id == selectedId }.coerceAtLeast(0)
 
-    val idle = skin.text.copy(alpha = if (skin.isDark) 0.92f else 0.82f)
+    val idle = GlowBarStyle.idle(skin)
     val accent = skin.accentText
-    val container =
-        if (skin.isDark) Color(0xFF000002).copy(alpha = 0.40f)
-        else Color(0xFFFEFDFF).copy(alpha = 0.40f)
-    val thumb =
-        if (skin.isDark) Color.White.copy(alpha = 0.10f)
-        else Color.Black.copy(alpha = 0.10f)
+    val container = GlowBarStyle.container(skin)
+    val thumb = GlowBarStyle.thumb(skin)
 
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
         LiquidBottomTabs(

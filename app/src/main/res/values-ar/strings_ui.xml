@@ -238,4 +238,13 @@
         <item quantity="many">%d أغنية</item>
         <item quantity="other">%d أغنية</item>
     </plurals>
+    <string name="settings_language">اللغة</string>
+    <string name="language_system">لغة النظام</string>
+    <string name="settings_start_tab">تبويب البدء</string>
+    <string name="settings_grid_size">حجم شبكة الألبومات</string>
+    <string name="grid_columns_fmt">%d أعمدة</string>
+    <string name="settings_pause_unplug">إيقاف مؤقت عند فصل السماعة</string>
+    <string name="settings_clear_cache">مسح الكاش</string>
+    <string name="settings_cache_size_fmt">%s</string>
+    <string name="settings_cache_cleared">تم مسح الكاش</string>
 </resources>

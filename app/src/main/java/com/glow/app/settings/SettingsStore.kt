@@ -45,6 +45,33 @@ class SettingsStore(context: Context) {
     var customBg by mutableStateOf(Color(prefs.getInt("custom_bg", 0xFF050C38.toInt())))
         private set
 
+    /** التبويب الذي يفتح عليه التطبيق (اسم قيمة LibraryTab). */
+    var startTab by mutableStateOf(prefs.getString("start_tab", "Tracks") ?: "Tracks")
+        private set
+
+    /** عدد أعمدة شبكة الألبومات والفنانين: 2 أو 3. */
+    var albumColumns by mutableStateOf(prefs.getInt("album_columns", 2).coerceIn(2, 3))
+        private set
+
+    /** إيقاف التشغيل مؤقتاً عند فصل السماعة أو البلوتوث. */
+    var pauseOnUnplug by mutableStateOf(prefs.getBoolean(PREF_PAUSE_ON_UNPLUG, true))
+        private set
+
+    fun updateStartTab(v: String) {
+        startTab = v
+        prefs.edit().putString("start_tab", v).apply()
+    }
+
+    fun updateAlbumColumns(v: Int) {
+        albumColumns = v.coerceIn(2, 3)
+        prefs.edit().putInt("album_columns", albumColumns).apply()
+    }
+
+    fun updatePauseOnUnplug(v: Boolean) {
+        pauseOnUnplug = v
+        prefs.edit().putBoolean(PREF_PAUSE_ON_UNPLUG, v).apply()
+    }
+
     fun updatePalette(v: String) {
         paletteId = v
         prefs.edit().putString("palette_id", v).apply()
@@ -83,5 +110,10 @@ class SettingsStore(context: Context) {
     fun updateSkipShortSeconds(v: Int) {
         skipShortSeconds = v
         prefs.edit().putInt("skip_short_sec", v).apply()
+    }
+
+    companion object {
+        const val PREFS_NAME = "glow_settings"
+        const val PREF_PAUSE_ON_UNPLUG = "pause_on_unplug"
     }
 }

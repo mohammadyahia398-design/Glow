@@ -63,6 +63,7 @@ import androidx.compose.ui.unit.sp
 import com.glow.app.liquid.backdrop.Backdrop
 import com.glow.app.liquid.backdrop.backdrops.layerBackdrop
 import com.glow.app.liquid.backdrop.backdrops.rememberLayerBackdrop
+import com.glow.app.liquid.ui.GlowGlassSegmentedBar
 import com.glow.app.liquid.ui.LiquidGlassCard
 import com.glow.app.liquid.ui.LiquidToggle
 import com.glow.app.settings.SettingsStore
@@ -76,10 +77,18 @@ import com.glow.app.ui.glass.components.GlassSwitch
 import com.glow.app.ui.glass.core.rememberGlassTier
 import com.glow.app.ui.theme.LocalGlowSkin
 import kotlinx.coroutines.delay
+import android.app.LocaleManager
+import android.content.Context
+import android.os.Build
+import android.os.LocaleList
+import android.text.format.Formatter
+import android.widget.Toast
+import com.glow.app.ui.library.LibraryTab
+import com.glow.app.FeatureFlags
 import com.glow.app.GlowStrings
 import com.glow.app.R
 
-private enum class Dlg { SPEED, SLEEP, SHORT, EQUALIZER }
+private enum class Dlg { SPEED, SLEEP, SHORT, EQUALIZER, LANGUAGE, START_TAB, GRID }
 
 /** خلفية الزجاج السائل لبطاقات الإعدادات؛ null على الأجهزة التي لا تدعم الانكسار. */
 private val LocalSettingsBackdrop = compositionLocalOf<Backdrop?> { null }
@@ -108,6 +117,9 @@ fun SettingsScreen(
     val glassTier = rememberGlassTier()
     val liquidBackdrop = rememberLayerBackdrop()
     var dlg by remember { mutableStateOf<Dlg?>(null) }
+    var currentLanguage by remember { mutableStateOf(readAppLanguage(context)) }
+    var cacheBytes by remember { mutableStateOf(cacheSize(context)) }
+    val cacheLabel = remember(cacheBytes) { Formatter.formatShortFileSize(context, cacheBytes) }
 
     var now by remember { mutableStateOf(System.currentTimeMillis()) }
     LaunchedEffect(sleepEndsAt) {
@@ -181,32 +193,13 @@ fun SettingsScreen(
                     }
 
                     Group {
-                        Item(
+                        ToggleItem(
                             icon = IconKind.Timer,
                             title = GlowStrings.get(R.string.skip_short_title),
-                            value = null,
-                            chevron = false,
-                            onClick = { store.updateSkipShortSongs(!store.skipShortSongs) },
-                            trailing = {
-                                if (glassTier.supportsRefraction) {
-                                    LiquidToggle(
-                                        selected = { store.skipShortSongs },
-                                        onSelect = { store.updateSkipShortSongs(it) },
-                                        backdrop = liquidBackdrop,
-                                        accentColor = skin.accent,
-                                        trackColor = skin.textSecondary.copy(alpha = 0.35f),
-                                        toggleOnTap = false, // النقر على الصف نفسه يبدّل الحالة
-                                    )
-                                } else {
-                                    GlassSwitch(
-                                        checked = store.skipShortSongs,
-                                        onCheckedChange = { store.updateSkipShortSongs(it) },
-                                        checkedTrackColor = skin.accent,
-                                        uncheckedTrackColor = skin.textSecondary.copy(alpha = 0.35f),
-                                        rimColor = Color.White,
-                                    )
-                                }
-                            },
+                            checked = store.skipShortSongs,
+                            onChange = { store.updateSkipShortSongs(it) },
+                            liquidBackdrop = liquidBackdrop,
+                            supportsRefraction = glassTier.supportsRefraction,
                         )
                         if (store.skipShortSongs) {
                             Divider()
@@ -215,7 +208,38 @@ fun SettingsScreen(
                     }
 
                     Group {
-                        Item(IconKind.Note, GlowStrings.get(R.string.vocal_isolation), GlowStrings.get(R.string.separate_vocals), onClick = onOpenVocalIsolation)
+                        ToggleItem(
+                            icon = IconKind.Pause,
+                            title = GlowStrings.get(R.string.settings_pause_unplug),
+                            checked = store.pauseOnUnplug,
+                            onChange = { store.updatePauseOnUnplug(it) },
+                            liquidBackdrop = liquidBackdrop,
+                            supportsRefraction = glassTier.supportsRefraction,
+                        )
+                    }
+
+                    Group {
+                        if (android.os.Build.VERSION.SDK_INT >= 33) {
+                            Item(IconKind.Info, GlowStrings.get(R.string.settings_language), languageLabel(currentLanguage)) { dlg = Dlg.LANGUAGE }
+                            Divider()
+                        }
+                        Item(IconKind.Playlist, GlowStrings.get(R.string.settings_start_tab), tabLabel(store.startTab)) { dlg = Dlg.START_TAB }
+                        Divider()
+                        Item(IconKind.Album, GlowStrings.get(R.string.settings_grid_size), GlowStrings.get(R.string.grid_columns_fmt, store.albumColumns)) { dlg = Dlg.GRID }
+                    }
+
+                    Group {
+                        Item(IconKind.Refresh, GlowStrings.get(R.string.settings_clear_cache), cacheLabel) {
+                            clearCache(context)
+                            cacheBytes = cacheSize(context)
+                            Toast.makeText(context, GlowStrings.get(R.string.settings_cache_cleared), Toast.LENGTH_SHORT).show()
+                        }
+                    }
+
+                    if (FeatureFlags.VOCAL_ISOLATION) {
+                        Group {
+                            Item(IconKind.Note, GlowStrings.get(R.string.vocal_isolation), GlowStrings.get(R.string.separate_vocals), onClick = onOpenVocalIsolation)
+                        }
                     }
 
                     Spacer(Modifier.height(4.dp))
@@ -257,6 +281,27 @@ fun SettingsScreen(
             listOf(15, 30, 45, 60).map { it to GlowStrings.get(R.string.seconds_fmt, it) },
             store.skipShortSeconds,
             { store.updateSkipShortSeconds(it) },
+        ) { dlg = null }
+
+        Dlg.LANGUAGE -> GlowChoiceDialog(
+            GlowStrings.get(R.string.settings_language),
+            listOf("" to GlowStrings.get(R.string.language_system), "ar" to "العربية", "en" to "English"),
+            currentLanguage,
+            { applyAppLanguage(context, it); currentLanguage = it },
+        ) { dlg = null }
+
+        Dlg.START_TAB -> GlowChoiceDialog(
+            GlowStrings.get(R.string.settings_start_tab),
+            LibraryTab.barTabs.map { it.name to it.label },
+            store.startTab,
+            { store.updateStartTab(it) },
+        ) { dlg = null }
+
+        Dlg.GRID -> GlowChoiceDialog(
+            GlowStrings.get(R.string.settings_grid_size),
+            listOf(2, 3).map { it to GlowStrings.get(R.string.grid_columns_fmt, it) },
+            store.albumColumns,
+            { store.updateAlbumColumns(it) },
         ) { dlg = null }
 
         Dlg.EQUALIZER -> EqualizerSheet(
@@ -402,6 +447,16 @@ private fun ThemeRow(selected: ThemeMode, onSelect: (ThemeMode) -> Unit) {
             fontWeight = FontWeight.Medium,
         )
         Spacer(Modifier.height(12.dp))
+        if (backdrop != null) {
+            // نفس مكوّن الشريط السفلي: زجاجي، يُنقر ويُسحب.
+            GlowGlassSegmentedBar(
+                labels = options.map { it.second },
+                selectedIndex = index,
+                onSelect = { onSelect(options[it].first) },
+                backdrop = backdrop,
+            )
+            return@Column
+        }
         BoxWithConstraints(
             Modifier
                 .fillMaxWidth()
@@ -501,4 +556,77 @@ private fun ThemeRow(selected: ThemeMode, onSelect: (ThemeMode) -> Unit) {
             }
         }
     }
+}
+
+private fun tabLabel(name: String): String =
+    (LibraryTab.barTabs.firstOrNull { it.name == name } ?: LibraryTab.Tracks).label
+
+private fun languageLabel(tag: String): String = when (tag) {
+    "ar" -> "العربية"
+    "en" -> "English"
+    else -> GlowStrings.get(R.string.language_system)
+}
+
+/** لغة التطبيق الحالية ("" = لغة النظام). تعمل من أندرويد 13 فما فوق. */
+private fun readAppLanguage(context: Context): String {
+    if (Build.VERSION.SDK_INT < 33) return ""
+    val locales = context.getSystemService(LocaleManager::class.java)?.applicationLocales
+    return locales?.takeIf { !it.isEmpty }?.get(0)?.language ?: ""
+}
+
+private fun applyAppLanguage(context: Context, tag: String) {
+    if (Build.VERSION.SDK_INT < 33) return
+    context.getSystemService(LocaleManager::class.java)?.applicationLocales =
+        if (tag.isEmpty()) LocaleList.getEmptyLocaleList() else LocaleList.forLanguageTags(tag)
+}
+
+private fun cacheSize(context: Context): Long =
+    listOfNotNull(context.cacheDir, context.externalCacheDir).sumOf { dir ->
+        dir.walkBottomUp().filter { it.isFile }.sumOf { it.length() }
+    }
+
+private fun clearCache(context: Context) {
+    listOfNotNull(context.cacheDir, context.externalCacheDir).forEach { dir ->
+        dir.listFiles()?.forEach { runCatching { it.deleteRecursively() } }
+    }
+}
+
+/** صف إعداد بمفتاح: زجاج سائل حيث يُدعم الانكسار، وإلا المفتاح العادي. النقر على الصف يبدّل الحالة. */
+@Composable
+private fun ToggleItem(
+    icon: IconKind,
+    title: String,
+    checked: Boolean,
+    onChange: (Boolean) -> Unit,
+    liquidBackdrop: Backdrop,
+    supportsRefraction: Boolean,
+) {
+    val skin = LocalGlowSkin.current
+    Item(
+        icon = icon,
+        title = title,
+        value = null,
+        chevron = false,
+        onClick = { onChange(!checked) },
+        trailing = {
+            if (supportsRefraction) {
+                LiquidToggle(
+                    selected = { checked },
+                    onSelect = onChange,
+                    backdrop = liquidBackdrop,
+                    accentColor = skin.accent,
+                    trackColor = skin.textSecondary.copy(alpha = 0.35f),
+                    toggleOnTap = false,
+                )
+            } else {
+                GlassSwitch(
+                    checked = checked,
+                    onCheckedChange = onChange,
+                    checkedTrackColor = skin.accent,
+                    uncheckedTrackColor = skin.textSecondary.copy(alpha = 0.35f),
+                    rimColor = Color.White,
+                )
+            }
+        },
+    )
 }

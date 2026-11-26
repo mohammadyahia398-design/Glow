@@ -71,6 +71,7 @@ import com.glow.app.media.displayTitle
 import com.glow.app.ui.common.MediaRow
 import com.glow.app.ui.common.formatTime
 import com.glow.app.ui.theme.LocalGlowSkin
+import com.glow.app.FeatureFlags
 import com.glow.app.GlowStrings
 import com.glow.app.R
 import androidx.annotation.StringRes
@@ -144,6 +145,7 @@ fun LibraryScreen(
     onOpenSettings: () -> Unit,
     onOpenVocalIsolation: () -> Unit = {},
     onOpenOnline: () -> Unit = {},
+    gridColumns: Int = 2,
     modifier: Modifier = Modifier,
 ) {
     val skin = LocalGlowSkin.current
@@ -216,7 +218,9 @@ fun LibraryScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 item { GlowChip(GlowStrings.get(R.string.genres), tab == LibraryTab.Genres, { showGenres = !showGenres }) }
-                item { GlowChip(GlowStrings.get(R.string.vocal_isolation), false, onOpenVocalIsolation) }
+                if (FeatureFlags.VOCAL_ISOLATION) {
+                    item { GlowChip(GlowStrings.get(R.string.vocal_isolation), false, onOpenVocalIsolation) }
+                }
                 item { GlowChip(GlowStrings.get(R.string.chip_online), false, onOpenOnline) }
             }
         }
@@ -299,7 +303,7 @@ fun LibraryScreen(
                     }
                 }
                 tab == LibraryTab.Albums -> LazyVerticalGrid(
-                    columns = GridCells.Fixed(2),
+                    columns = GridCells.Fixed(gridColumns),
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = gridPad,
                     horizontalArrangement = Arrangement.spacedBy(14.dp),
@@ -315,7 +319,7 @@ fun LibraryScreen(
                     }
                 }
                 else -> LazyVerticalGrid(
-                    columns = GridCells.Fixed(2),
+                    columns = GridCells.Fixed(gridColumns),
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = gridPad,
                     horizontalArrangement = Arrangement.spacedBy(14.dp),

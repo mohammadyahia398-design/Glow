@@ -85,6 +85,7 @@ import com.glow.app.ui.common.GlowTopBar
 import com.glow.app.ui.theme.LocalGlowSkin
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlin.random.Random
+import com.glow.app.FeatureFlags
 import com.glow.app.GlowStrings
 import com.glow.app.R
 
@@ -174,9 +175,16 @@ fun GlowApp(
     var collection by remember { mutableStateOf<MediaGroup?>(null) }
     var showPlayer by remember { mutableStateOf(false) }
     var showSettings by remember { mutableStateOf(false) }
-    var showVocal by remember { mutableStateOf(false) }
+    var showVocalRaw by remember { mutableStateOf(false) }
+    // عزل الصوت معطّل بعلم الميزات؛ لا تُفتح الشاشة حتى لو استُدعي الفتح من مكان قديم.
+    val showVocal = FeatureFlags.VOCAL_ISOLATION && showVocalRaw
+    val setShowVocal = { v: Boolean -> showVocalRaw = v }
     var showOnline by remember { mutableStateOf(false) }
-    var libraryTab by remember { mutableStateOf(LibraryTab.Tracks) }
+    var libraryTab by remember {
+        mutableStateOf(
+            LibraryTab.barTabs.firstOrNull { it.name == settings.startTab } ?: LibraryTab.Tracks,
+        )
+    }
     val barItems = remember {
         LibraryTab.barTabs.map { t ->
             LiquidBarItem(t.name, t.label) { tint -> LiquidBarIcon(t.icon, tint, 26.dp) }
@@ -184,7 +192,7 @@ fun GlowApp(
     }
     // أول معالج مسجَّل أقل أولوية: يُغلق المشغّل ثم الألبوم ثم الإعدادات.
     BackHandler(enabled = showSettings) { showSettings = false }
-    BackHandler(enabled = showVocal) { showVocal = false }
+    BackHandler(enabled = showVocal) { setShowVocal(false) }
     BackHandler(enabled = showOnline) { showOnline = false }
     BackHandler(enabled = showPlayer) { showPlayer = false }
     BackHandler(enabled = !showPlayer && collection != null) { collection = null }
@@ -196,7 +204,7 @@ fun GlowApp(
             GlowActions.OPEN_ONLINE -> {
                 showPlayer = false
                 showSettings = false
-                showVocal = false
+                setShowVocal(false)
                 collection = null
                 showOnline = true
                 onLaunchActionHandled()
@@ -285,7 +293,7 @@ fun GlowApp(
                 val open = collection
                 if (showVocal) {
                     Column(Modifier.fillMaxSize()) {
-                        GlowTopBar(title = null, onBack = { showVocal = false })
+                        GlowTopBar(title = null, onBack = { setShowVocal(false) })
                         VocalIsolationScreen(Modifier.weight(1f))
                     }
                 } else if (showOnline) {
@@ -307,7 +315,7 @@ fun GlowApp(
                         sleepEndsAt = sleepEndsAt,
                         onSleepTimer = { controller?.setSleepTimer(it) },
                         audioSessionId = playerState.audioSessionId,
-                        onOpenVocalIsolation = { showVocal = true },
+                        onOpenVocalIsolation = { setShowVocal(true) },
                     )
                 } else if (open == null) {
                     LibraryScreen(
@@ -344,8 +352,9 @@ fun GlowApp(
                         },
                         onOpen = { collection = it },
                         onOpenSettings = { showSettings = true },
-                        onOpenVocalIsolation = { showVocal = true },
+                        onOpenVocalIsolation = { setShowVocal(true) },
                         onOpenOnline = { showOnline = true },
+                        gridColumns = settings.albumColumns,
                     )
                 } else {
                     CollectionScreen(

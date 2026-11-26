@@ -234,4 +234,13 @@
         <item quantity="one">%d song</item>
         <item quantity="other">%d songs</item>
     </plurals>
+    <string name="settings_language">Language</string>
+    <string name="language_system">System</string>
+    <string name="settings_start_tab">Start tab</string>
+    <string name="settings_grid_size">Album grid size</string>
+    <string name="grid_columns_fmt">%d columns</string>
+    <string name="settings_pause_unplug">Pause when headphones disconnect</string>
+    <string name="settings_clear_cache">Clear cache</string>
+    <string name="settings_cache_size_fmt">%s</string>
+    <string name="settings_cache_cleared">Cache cleared</string>
 </resources>

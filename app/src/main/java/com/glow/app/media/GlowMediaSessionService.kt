@@ -54,7 +54,11 @@ class GlowMediaSessionService : Service() {
     private val noisyReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             if (intent?.action == AudioManager.ACTION_AUDIO_BECOMING_NOISY &&
-                controller.state.value.isPlaying
+                controller.state.value.isPlaying &&
+                getSharedPreferences(
+                    com.glow.app.settings.SettingsStore.PREFS_NAME,
+                    Context.MODE_PRIVATE,
+                ).getBoolean(com.glow.app.settings.SettingsStore.PREF_PAUSE_ON_UNPLUG, true)
             ) {
                 controller.pause()
             }
