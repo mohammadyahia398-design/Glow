@@ -1,5 +1,6 @@
 package com.glow.app
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -35,11 +36,22 @@ class MainActivity : ComponentActivity() {
 
     private val settings by lazy { SettingsStore(applicationContext) }
 
+    /** أمر من اختصار الأيقونة ينتظر أن ينفّذه GlowApp مرة واحدة. */
+    private var launchAction by mutableStateOf<String?>(null)
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        launchAction = GlowActions.from(intent)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         // شاشة النظام تطابق بداية GlowSplash، فنُزيلها فور الرسم الأول بلا أي انتقال ظاهر.
         CrashReporter.install(this)
         installSplashScreen().setOnExitAnimationListener { it.remove() }
         super.onCreate(savedInstanceState)
+        // لا نقرأ الأمر بعد تدوير الشاشة أو إعادة الإنشاء، وإلا تكرّر.
+        if (savedInstanceState == null) launchAction = GlowActions.from(intent)
         enableEdgeToEdge()
         setContent {
             val dark = when (settings.themeMode) {
@@ -57,7 +69,12 @@ class MainActivity : ComponentActivity() {
                     // عند وجود انهيار سابق نعرضه وحده أولاً؛ لا نبني الواجهة قبل إغلاق النافذة،
                     // وإلا انهار التطبيق من جديد قبل أن يراها المستخدم.
                     if (crash == null) {
-                        GlowApp(settings, Modifier.fillMaxSize())
+                        GlowApp(
+                            settings,
+                            Modifier.fillMaxSize(),
+                            launchAction = launchAction,
+                            onLaunchActionHandled = { launchAction = null },
+                        )
                         if (showSplash) GlowSplash(onFinished = { showSplash = false })
                     }
                     crash?.let { report ->

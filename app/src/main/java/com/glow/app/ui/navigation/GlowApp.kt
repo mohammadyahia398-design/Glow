@@ -34,6 +34,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import com.glow.app.GlowActions
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -97,7 +98,12 @@ private val idleSleep = MutableStateFlow<Long?>(null)
  * التنقل بحالة داخلية، وزر الرجوع يغلق المشغّل ثم الألبوم.
  */
 @Composable
-fun GlowApp(settings: SettingsStore, modifier: Modifier = Modifier) {
+fun GlowApp(
+    settings: SettingsStore,
+    modifier: Modifier = Modifier,
+    launchAction: String? = null,
+    onLaunchActionHandled: () -> Unit = {},
+) {
     val skin = LocalGlowSkin.current
     val context = LocalContext.current
     val appContext = context.applicationContext
@@ -180,6 +186,34 @@ fun GlowApp(settings: SettingsStore, modifier: Modifier = Modifier) {
     BackHandler(enabled = showOnline) { showOnline = false }
     BackHandler(enabled = showPlayer) { showPlayer = false }
     BackHandler(enabled = !showPlayer && collection != null) { collection = null }
+
+    // اختصارات أيقونة التطبيق: تشغيل عشوائي، أو فتح البحث في الإنترنت.
+    LaunchedEffect(launchAction, loaded, controller, hasAudioAccess) {
+        when (launchAction) {
+            null -> Unit
+            GlowActions.OPEN_ONLINE -> {
+                showPlayer = false
+                showSettings = false
+                showVocal = false
+                collection = null
+                showOnline = true
+                onLaunchActionHandled()
+            }
+            GlowActions.SHUFFLE_ALL -> {
+                if (!hasAudioAccess) {
+                    onLaunchActionHandled()
+                } else if (loaded && controller != null) {
+                    if (visibleTracks.isNotEmpty()) {
+                        showOnline = false
+                        controller?.setShuffle(true)
+                        connection.play(visibleTracks, Random.nextInt(visibleTracks.size))
+                    }
+                    onLaunchActionHandled()
+                }
+            }
+            else -> onLaunchActionHandled()
+        }
+    }
 
     val tier = rememberGlassTier()
     val reduceMotion = rememberSystemReduceMotion()

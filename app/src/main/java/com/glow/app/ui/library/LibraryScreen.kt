@@ -28,6 +28,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import com.glow.app.ui.common.GlowFastScroll
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -261,7 +262,7 @@ fun LibraryScreen(
                     actionLabel = "مسح البحث",
                     onAction = { query = "" },
                 )
-                tab == LibraryTab.Tracks -> TrackList(sorted, currentId, isPlaying, pad, onPlay) { actionTrack = it }
+                tab == LibraryTab.Tracks -> TrackList(sorted, sort, currentId, isPlaying, pad, onPlay) { actionTrack = it }
                 tab == LibraryTab.Favorites -> if (favorites.isEmpty()) {
                     GlowEmptyState(
                         title = "لا مفضلات بعد",
@@ -269,7 +270,7 @@ fun LibraryScreen(
                         icon = IconKind.Heart,
                     )
                 } else {
-                    TrackList(favorites, currentId, isPlaying, pad, onPlay) { actionTrack = it }
+                    TrackList(favorites, sort, currentId, isPlaying, pad, onPlay) { actionTrack = it }
                 }
                 tab == LibraryTab.Genres -> if (genres.isEmpty()) {
                     GlowEmptyState(
@@ -388,27 +389,49 @@ fun LibraryScreen(
 @Composable
 private fun TrackList(
     list: List<Track>,
+    sort: LibrarySort,
     currentId: Long?,
     isPlaying: Boolean,
     pad: PaddingValues,
     onPlay: (List<Track>, Int) -> Unit,
     onLongPress: (Track) -> Unit,
 ) {
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = pad) {
-        itemsIndexed(list, key = { _, t -> t.id }) { i, t ->
-            MediaRow(
-                art = t,
-                title = t.displayTitle,
-                subtitle = t.artist.takeIf { it != UNKNOWN_ARTIST } ?: t.addedLabel,
-                trailing = formatTime(t.durationMs),
-                highlight = t.id == currentId,
-                playing = isPlaying,
-                onClick = { onPlay(list, i) },
-                onLongClick = { onLongPress(t) },
-            )
+    val listState = rememberLazyListState()
+    Box(Modifier.fillMaxSize()) {
+        LazyColumn(Modifier.fillMaxSize(), state = listState, contentPadding = pad) {
+            itemsIndexed(list, key = { _, t -> t.id }) { i, t ->
+                MediaRow(
+                    art = t,
+                    title = t.displayTitle,
+                    subtitle = t.artist.takeIf { it != UNKNOWN_ARTIST } ?: t.addedLabel,
+                    trailing = formatTime(t.durationMs),
+                    highlight = t.id == currentId,
+                    playing = isPlaying,
+                    onClick = { onPlay(list, i) },
+                    onLongClick = { onLongPress(t) },
+                )
+            }
         }
+        GlowFastScroll(
+            state = listState,
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(top = pad.calculateTopPadding(), bottom = pad.calculateBottomPadding()),
+            label = { i ->
+                val t = list.getOrNull(i)
+                when {
+                    t == null -> ""
+                    sort == LibrarySort.Title -> letterOf(t.displayTitle)
+                    sort == LibrarySort.Artist -> letterOf(t.artist)
+                    else -> "${i + 1}"
+                }
+            },
+        )
     }
 }
+
+private fun letterOf(text: String): String =
+    text.trim().firstOrNull()?.let { if (it.isLetter()) it.uppercaseChar().toString() else "#" } ?: "#"
 
 @Composable
 private fun PlaylistsTab(
