@@ -52,6 +52,7 @@ import com.glow.app.ui.common.AlbumArt
 import com.glow.app.ui.common.CoverCell
 import com.glow.app.ui.common.GlowDialog
 import com.glow.app.ui.common.GlowDialogAction
+import com.glow.app.ui.common.GlowDialogRow
 import com.glow.app.ui.common.GlowEmptyState
 import com.glow.app.ui.common.GlowIcon
 import com.glow.app.ui.common.GlowIconTap
@@ -384,12 +385,7 @@ private fun SpecialCard(title: String, list: List<Track>, onOpen: (MediaGroup) -
 
 @Composable
 private fun ActionRow(text: String, onClick: () -> Unit) {
-    Text(
-        text,
-        color = LocalGlowSkin.current.text,
-        fontSize = 17.sp,
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 14.dp),
-    )
+    GlowDialogRow(text, onClick)
 }
 
 @Composable
