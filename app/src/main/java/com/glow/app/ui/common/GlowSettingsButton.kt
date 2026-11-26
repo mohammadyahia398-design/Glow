@@ -1,7 +1,5 @@
 package com.glow.app.ui.common
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
@@ -9,8 +7,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
@@ -29,7 +25,7 @@ fun GlowSettingsButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     size: Dp = 44.dp,
-    corner: Dp = 15.dp,
+    corner: Dp = 50.dp,
     container: Color? = null,
     bars: Color? = null,
     description: String = "الإعدادات",
@@ -41,21 +37,12 @@ fun GlowSettingsButton(
     Box(
         modifier
             .size(size)
-            .clip(shape)
-            .background(
-                Brush.verticalGradient(
-                    listOf(surface.copy(alpha = 0.98f), surface.copy(alpha = 0.78f)),
-                ),
+            .glowGlass(
+                shape,
+                Brush.verticalGradient(listOf(surface.copy(alpha = 0.98f), surface.copy(alpha = 0.78f))),
+                skin.isDark,
+                skin.glassBorder,
             )
-            .drawBehind {
-                drawRect(
-                    Brush.verticalGradient(
-                        listOf(Color.White.copy(alpha = if (skin.isDark) 0.11f else 0.48f), Color.Transparent),
-                        endY = this.size.height * 0.58f,
-                    ),
-                )
-            }
-            .border(1.dp, skin.glassBorder.copy(alpha = 0.62f), shape)
             .semantics { contentDescription = description }
             .clickable(role = Role.Button, onClick = onClick),
         contentAlignment = Alignment.Center,

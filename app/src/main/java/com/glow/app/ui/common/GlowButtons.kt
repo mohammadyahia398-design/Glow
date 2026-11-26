@@ -2,9 +2,6 @@ package com.glow.app.ui.common
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -25,10 +22,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.graphics.lerp
@@ -59,12 +54,14 @@ private fun GlowButtonBase(
     modifier: Modifier,
     enabled: Boolean,
     background: Brush,
-    border: BorderStroke?,
+    rimColor: Color,
+    glow: Color?,
     contentColor: Color,
     fontSize: TextUnit,
     horizontalPadding: Dp,
     content: @Composable RowScope.() -> Unit,
 ) {
+    val skin = LocalGlowSkin.current
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
     val scale by animateFloatAsState(
@@ -79,9 +76,7 @@ private fun GlowButtonBase(
                 scaleY = scale
                 alpha = if (enabled) 1f else 0.4f
             }
-            .clip(PillShape)
-            .background(background)
-            .then(if (border != null) Modifier.border(border, PillShape) else Modifier)
+            .glowGlass(PillShape, background, skin.isDark, rimColor, glow)
             .clickable(
                 interactionSource = interaction,
                 indication = null,
@@ -118,7 +113,8 @@ fun GlowFilledButton(
         modifier = modifier.heightIn(min = 48.dp),
         enabled = enabled,
         background = skin.accentBrush(),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.22f)),
+        rimColor = Color.White,
+        glow = skin.accent,
         contentColor = skin.onAccent,
         fontSize = 16.sp,
         horizontalPadding = 22.dp,
@@ -141,8 +137,9 @@ fun GlowOutlinedButton(
         onClick = onClick,
         modifier = modifier.heightIn(min = 44.dp),
         enabled = enabled,
-        background = SolidColor(color.copy(alpha = 0.10f)),
-        border = BorderStroke(1.dp, color.copy(alpha = 0.38f)),
+        background = Brush.verticalGradient(listOf(color.copy(alpha = 0.20f), color.copy(alpha = 0.07f))),
+        rimColor = color,
+        glow = null,
         contentColor = color,
         fontSize = 15.sp,
         horizontalPadding = 20.dp,
@@ -163,8 +160,11 @@ fun GlowTextButton(
         onClick = onClick,
         modifier = modifier.heightIn(min = 36.dp),
         enabled = enabled,
-        background = SolidColor(skin.accentText.copy(alpha = 0.12f)),
-        border = null,
+        background = Brush.verticalGradient(
+            listOf(skin.accentText.copy(alpha = 0.18f), skin.accentText.copy(alpha = 0.08f)),
+        ),
+        rimColor = skin.accentText,
+        glow = null,
         contentColor = skin.accentText,
         fontSize = 14.sp,
         horizontalPadding = 14.dp,
@@ -199,8 +199,11 @@ fun GlowRoundButton(
                 scaleY = scale
                 alpha = if (enabled) 1f else 0.35f
             }
-            .clip(CircleShape)
-            .background(skin.chip)
+            .glowGlass(
+                CircleShape,
+                Brush.verticalGradient(listOf(skin.chip.copy(alpha = 0.95f), skin.chip.copy(alpha = 0.70f))),
+                skin.isDark,
+            )
             .semantics { contentDescription = description }
             .clickable(
                 interactionSource = interaction,

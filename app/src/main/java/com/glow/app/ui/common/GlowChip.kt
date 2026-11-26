@@ -2,8 +2,6 @@ package com.glow.app.ui.common
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -17,10 +15,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.semantics.Role
@@ -52,9 +48,8 @@ fun GlowChip(
     val shape = RoundedCornerShape(50)
     val background: Brush =
         if (selected) skin.accentBrush()
-        else SolidColor(skin.chip)
+        else Brush.verticalGradient(listOf(skin.chip.copy(alpha = 0.95f), skin.chip.copy(alpha = 0.70f)))
     val content = if (selected) skin.onAccent else skin.text
-    val border = if (selected) Color.White.copy(alpha = 0.22f) else skin.text.copy(alpha = 0.14f)
     Box(
         modifier
             .heightIn(min = 40.dp)
@@ -62,9 +57,7 @@ fun GlowChip(
                 scaleX = scale
                 scaleY = scale
             }
-            .clip(shape)
-            .background(background)
-            .border(1.dp, border, shape)
+            .glowGlass(shape, background, skin.isDark, Color.White, if (selected) skin.accent else null)
             .semantics { this.selected = selected }
             .clickable(
                 interactionSource = interaction,
