@@ -1,6 +1,11 @@
 package com.glow.app.ui.nowplaying
 
+import androidx.compose.animation.Crossfade
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -63,6 +68,7 @@ fun NowPlayingScreen(
     val skin = LocalGlowSkin.current
     var showQueue by remember { mutableStateOf(false) }
     var showEqualizer by remember { mutableStateOf(false) }
+    var showLyrics by remember { mutableStateOf(false) }
     // الزجاج السائل (أندرويد 13+): الخلفية الحيّة هي ما تنكسر خلف الشريط والأزرار.
     val useGlass = rememberGlassTier().supportsRefraction
     val liquidBackdrop = rememberLayerBackdrop()
@@ -84,7 +90,37 @@ fun NowPlayingScreen(
         ) {
             GlowTopBar(title = null, onBack = onClose, backIcon = IconKind.Down)
             Spacer(Modifier.height(8.dp))
-            AlbumArt(track, Modifier.fillMaxWidth().aspectRatio(1f), radius = 32.dp, px = 800)
+            Box(Modifier.fillMaxWidth().aspectRatio(1f)) {
+                Crossfade(targetState = showLyrics, label = "artOrLyrics") { lyricsOn ->
+                    if (lyricsOn) {
+                        LyricsPanel(
+                            track = track,
+                            positionMs = state.positionMs,
+                            onSeek = onSeek,
+                            contentColor = contentColor,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    } else {
+                        AlbumArt(track, Modifier.fillMaxSize(), radius = 32.dp, px = 800)
+                    }
+                }
+                Box(
+                    Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(12.dp)
+                        .clip(RoundedCornerShape(50))
+                        .background(Color.Black.copy(alpha = 0.42f))
+                        .clickable { showLyrics = !showLyrics }
+                        .padding(horizontal = 14.dp, vertical = 8.dp),
+                ) {
+                    Text(
+                        text = if (showLyrics) "الغلاف" else "الكلمات",
+                        color = Color.White,
+                        fontSize = 12.5.sp,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
+            }
             Spacer(Modifier.height(24.dp))
             Text(
                 text = track.title,
