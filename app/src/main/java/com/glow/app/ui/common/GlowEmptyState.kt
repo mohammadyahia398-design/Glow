@@ -33,13 +33,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
-import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.Role
@@ -50,24 +50,26 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.glow.app.ui.theme.LocalGlowSkin
 
-private val SceneW = 220.dp
-private val SceneH = 190.dp
-private val GlassY = 100.dp
-private val GlassW = 196.dp
-private val GlassH = 84.dp
+// المشهد مصغّر إلى نحو ثلثي حجمه السابق (كان 220×190).
+private val SceneW = 150.dp
+private val SceneH = 130.dp
+private val GlassY = 68.dp
+private val GlassW = 133.dp
+private val GlassH = 57.dp
 
-private val Cyan1 = Color(0xFFB07CFF)
-private val Cyan2 = Color(0xFFF042FF)
-private val Cyan3 = Color(0xFF7226FF)
-private val Indigo = Color(0xFF7226FF)
+private val Magenta = Color(0xFFF042FF)
+private val Violet = Color(0xFF7226FF)
+private val Lilac = Color(0xFFB07CFF)
 private val Periwinkle = Color(0xFFC9B2FF)
+private val Blush = Color(0xFFFFE5F1)
 private val Ink = Color(0xFF010030)
+private val Pale = Color(0xFFE4D4FF)
 
 /**
- * حالة فراغ بلغة «الصلب أمام الزجاج»: مجسّم أبيض صلب فيه رمز، خلفه كتلة سماوية ساطعة،
- * وأمامهما لوح زجاجي يطمس ما خلفه تدريجياً (أقوى في الأسفل) بصبغة نيلية.
- * يطفو المشهد ببطء، ويعرض عنواناً وجملة وزراً أبيض سميكاً اختيارياً.
+ * حالة فراغ بلغة «الصلب أمام الزجاج»: بطاقة فيها رمز، خلفها كتلة ملوّنة،
+ * وأمامهما لوح زجاجي يطمس ما خلفه تدريجياً (أقوى في الأسفل). يطفو المشهد ببطء.
  *
+ * الداكن: بطاقة لافندر باهتة ولوح نيلي. الفاتح: بطاقة بيضاء بظل ناعم وأيقونة بنفسجية ولوح أخف.
  * على أندرويد أقدم من 12 لا يتوفر تمويه حي، فيُعوَّض بصبغة أكثف على اللوح.
  */
 @Composable
@@ -81,6 +83,7 @@ fun GlowEmptyState(
     onAction: (() -> Unit)? = null,
 ) {
     val skin = LocalGlowSkin.current
+    val dark = skin.isDark
     val transition = rememberInfiniteTransition(label = "emptyFloat")
     val float by transition.animateFloat(
         initialValue = -1f,
@@ -88,8 +91,8 @@ fun GlowEmptyState(
         animationSpec = infiniteRepeatable(tween(2800, easing = FastOutSlowInEasing), RepeatMode.Reverse),
         label = "emptyFloatValue",
     )
-    val solid = if (skin.isDark) Color(0xFFE4D4FF) else Color(0xFF0E0060)
-    val onSolid = if (skin.isDark) Ink else Color.White
+    val solid = if (dark) Pale else Color(0xFF0E0060)
+    val onSolid = if (dark) Ink else Color.White
 
     Column(
         modifier.fillMaxSize().padding(start = 24.dp, end = 24.dp, bottom = 64.dp),
@@ -104,39 +107,39 @@ fun GlowEmptyState(
                     .drawBehind {
                         drawCircle(
                             Brush.radialGradient(
-                                listOf(Cyan2.copy(alpha = 0.30f), Color.Transparent),
+                                listOf(Magenta.copy(alpha = if (dark) 0.26f else 0.16f), Color.Transparent),
                                 center = center,
-                                radius = size.width * 0.9f,
+                                radius = size.width * 0.85f,
                             ),
-                            radius = size.width * 0.9f,
+                            radius = size.width * 0.85f,
                         )
                     }
                     .graphicsLayer {
                         rotationZ = -6f
-                        translationY = float * 5.dp.toPx()
+                        translationY = float * 4.dp.toPx()
                     },
             ) {
-                EmptyScene(icon)
-                GlassPane(icon)
+                EmptyScene(icon, dark)
+                GlassPane(icon, dark)
                 if (badge != null) {
                     Box(
                         Modifier
-                            .offset(x = 80.dp, y = 158.dp)
-                            .size(46.dp)
-                            .shadow(10.dp, CircleShape, ambientColor = Indigo, spotColor = Indigo)
+                            .offset(x = 54.dp, y = 108.dp)
+                            .size(32.dp)
+                            .shadow(8.dp, CircleShape, ambientColor = Violet, spotColor = Violet)
                             .background(Color.White, CircleShape),
                         contentAlignment = Alignment.Center,
                     ) {
-                        GlowIcon(badge, Ink, 24.dp)
+                        GlowIcon(badge, if (dark) Ink else Violet, 18.dp)
                     }
                 }
             }
         }
-        Spacer(Modifier.height(if (badge != null) 36.dp else 28.dp))
+        Spacer(Modifier.height(if (badge != null) 26.dp else 20.dp))
         Text(
             title,
             color = skin.text,
-            fontSize = 22.sp,
+            fontSize = 20.sp,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth(),
@@ -144,62 +147,72 @@ fun GlowEmptyState(
         Text(
             message,
             color = skin.textSecondary,
-            fontSize = 15.sp,
+            fontSize = 14.sp,
             textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+            modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
         )
         if (actionLabel != null && onAction != null) {
             Box(
                 Modifier
-                    .padding(top = 20.dp)
-                    .height(52.dp)
-                    .widthIn(min = 160.dp)
-                    .clip(RoundedCornerShape(26.dp))
+                    .padding(top = 18.dp)
+                    .height(48.dp)
+                    .widthIn(min = 150.dp)
+                    .clip(RoundedCornerShape(24.dp))
                     .background(solid)
                     .clickable(role = Role.Button, onClick = onAction)
-                    .padding(horizontal = 32.dp),
+                    .padding(horizontal = 28.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(actionLabel, color = onSolid, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                Text(actionLabel, color = onSolid, fontSize = 15.sp, fontWeight = FontWeight.Bold)
             }
         }
     }
 }
 
-/** المجسّم الأبيض الصلب وخلفه الكتلة السماوية التي تبدو كامتداد ثلاثي الأبعاد. */
+/** البطاقة الصلبة وخلفها الكتلة الملوّنة التي تبدو كامتداد ثلاثي الأبعاد. */
 @Composable
-private fun EmptyScene(icon: IconKind) {
+private fun EmptyScene(icon: IconKind, dark: Boolean) {
+    val back = if (dark) {
+        Brush.linearGradient(listOf(Lilac, Magenta, Violet))
+    } else {
+        Brush.linearGradient(listOf(Blush, Magenta.copy(alpha = 0.55f), Violet.copy(alpha = 0.65f)))
+    }
+    val cardShadow = if (dark) Magenta else Violet.copy(alpha = 0.45f)
     Box(Modifier.size(SceneW, SceneH)) {
         Box(
             Modifier
-                .offset(x = 40.dp, y = 18.dp)
-                .size(150.dp)
-                .background(
-                    Brush.linearGradient(listOf(Cyan1, Cyan2, Cyan3)),
-                    RoundedCornerShape(40.dp),
-                ),
+                .offset(x = 27.dp, y = 12.dp)
+                .size(102.dp)
+                .background(back, RoundedCornerShape(28.dp)),
         )
         Box(
             Modifier
-                .offset(x = 20.dp, y = 0.dp)
-                .size(150.dp)
-                .shadow(14.dp, RoundedCornerShape(40.dp), ambientColor = Cyan2, spotColor = Cyan2)
-                .background(Color(0xFFE4D4FF), RoundedCornerShape(40.dp)),
+                .offset(x = 14.dp, y = 0.dp)
+                .size(102.dp)
+                .shadow(if (dark) 10.dp else 14.dp, RoundedCornerShape(28.dp), ambientColor = cardShadow, spotColor = cardShadow)
+                .background(if (dark) Pale else Color.White, RoundedCornerShape(28.dp)),
             contentAlignment = Alignment.TopCenter,
         ) {
-            GlowIcon(icon, Ink, 78.dp, Modifier.padding(top = 22.dp))
+            GlowIcon(icon, if (dark) Ink else Violet, 52.dp, Modifier.padding(top = 15.dp))
         }
     }
 }
 
 /**
  * اللوح الزجاجي: نسخة ثانية من المشهد تُمَوَّه وتظهر بقناع متدرج (لا شيء في الأعلى، كاملة في الأسفل)،
- * فوقها صبغة نيلية متدرجة ولمعة علوية وحافة رفيعة.
+ * فوقها صبغة متدرجة ولمعة علوية وحافة رفيعة. في الفاتح أخف بكثير حتى لا يبدو ثقيلاً.
  */
 @Composable
-private fun GlassPane(icon: IconKind) {
-    val shape = RoundedCornerShape(28.dp)
+private fun GlassPane(icon: IconKind, dark: Boolean) {
+    val shape = RoundedCornerShape(20.dp)
     val canBlur = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+    val bottomTint = when {
+        dark -> Violet.copy(alpha = if (canBlur) 0.80f else 0.92f)
+        else -> Violet.copy(alpha = if (canBlur) 0.40f else 0.60f)
+    }
+    val midTint = if (dark) Periwinkle.copy(alpha = if (canBlur) 0.10f else 0.35f)
+    else Color.White.copy(alpha = if (canBlur) 0.22f else 0.45f)
+    val rimEnd = if (dark) Color.White.copy(alpha = 0.08f) else Violet.copy(alpha = 0.14f)
     Box(
         Modifier
             .offset(x = 0.dp, y = GlassY)
@@ -225,9 +238,9 @@ private fun GlassPane(icon: IconKind) {
                         blendMode = BlendMode.DstIn,
                     )
                 }
-                .then(if (canBlur) Modifier.blur(16.dp) else Modifier),
+                .then(if (canBlur) Modifier.blur(11.dp) else Modifier),
         ) {
-            EmptyScene(icon)
+            EmptyScene(icon, dark)
         }
         Box(
             Modifier
@@ -237,14 +250,14 @@ private fun GlassPane(icon: IconKind) {
                         Brush.verticalGradient(
                             colorStops = arrayOf(
                                 0f to Color.Transparent,
-                                0.35f to Periwinkle.copy(alpha = if (canBlur) 0.10f else 0.35f),
-                                1f to Indigo.copy(alpha = if (canBlur) 0.88f else 0.95f),
+                                0.35f to midTint,
+                                1f to bottomTint,
                             ),
                         ),
                     )
                     drawRect(
                         Brush.verticalGradient(
-                            listOf(Color.White.copy(alpha = 0.28f), Color.Transparent),
+                            listOf(Color.White.copy(alpha = if (dark) 0.26f else 0.45f), Color.Transparent),
                             endY = size.height * 0.3f,
                         ),
                     )
@@ -252,12 +265,12 @@ private fun GlassPane(icon: IconKind) {
                         Brush.horizontalGradient(
                             listOf(Color.Transparent, Color.White.copy(alpha = 0.9f), Color.Transparent),
                         ),
-                        size = Size(size.width, 1.5.dp.toPx()),
+                        size = Size(size.width, 1.2.dp.toPx()),
                     )
                 }
                 .border(
                     1.dp,
-                    Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.65f), Color.White.copy(alpha = 0.08f))),
+                    Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.65f), rimEnd)),
                     shape,
                 ),
         )
