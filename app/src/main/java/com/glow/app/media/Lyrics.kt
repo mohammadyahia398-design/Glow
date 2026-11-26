@@ -1,6 +1,11 @@
 package com.glow.app.media
 
 import android.content.Context
+import android.net.Uri
+import java.io.ByteArrayOutputStream
+import java.nio.ByteBuffer
+import java.nio.charset.CharacterCodingException
+import java.nio.charset.CodingErrorAction
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
@@ -31,6 +36,7 @@ sealed interface LyricsResult {
 private val LRC_TIME = Regex("""\[(\d{1,3}):(\d{2})(?:[.:](\d{1,3}))?]""")
 private const val UNKNOWN_ARTIST_NAME = "فنان غير معروف"
 private const val NEGATIVE_CACHE_MS = 7L * 24 * 60 * 60 * 1000
+private const val MAX_IMPORT_BYTES = 1_000_000
 
 /** يحوّل نص LRC إلى أسطر مرتبة بالزمن. الأسطر الفارغة تصبح «♪». */
 internal fun parseLrc(text: String): List<LyricLine> {
@@ -66,6 +72,8 @@ internal fun parseLrc(text: String): List<LyricLine> {
 object LyricsRepository {
 
     suspend fun load(context: Context, track: Track): LyricsResult = withContext(Dispatchers.IO) {
+        // كلمات اختارها المستخدم بنفسه لها الأولوية على الجلب من الإنترنت.
+        readCache(manualFile(context, track))?.let { return@withContext it }
         val title = track.displayTitle
         if (title.startsWith("رسالة واتساب") || title.isBlank()) return@withContext LyricsResult.None
         val artist = track.artist.trim().takeIf { it.isNotEmpty() && it != UNKNOWN_ARTIST_NAME }
@@ -81,6 +89,65 @@ object LyricsRepository {
         }
         runCatching { writeCache(file, result) }
         result
+    }
+
+    private fun manualFile(context: Context, track: Track): File {
+        val artist = track.artist.trim().takeIf { it.isNotEmpty() && it != UNKNOWN_ARTIST_NAME }
+        val key = sha1("$artist|${track.displayTitle}|${track.durationMs / 1000}")
+        return File(File(context.filesDir, "lyrics_manual"), key)
+    }
+
+    /** هل لهذه الأغنية كلمات اختارها المستخدم بنفسه؟ */
+    fun hasManual(context: Context, track: Track): Boolean = manualFile(context, track).exists()
+
+    /** يحذف الكلمات التي اختارها المستخدم فتعود الكلمات التلقائية. */
+    fun clearManual(context: Context, track: Track) {
+        runCatching { manualFile(context, track).delete() }
+    }
+
+    /**
+     * يقرأ ملفاً اختاره المستخدم (.lrc مؤقّت أو نص عادي) ويحفظه لهذه الأغنية في ذاكرة التطبيق الدائمة.
+     * يرجع false إن تعذّرت القراءة أو كان الملف فارغاً أو كبيراً جداً.
+     */
+    suspend fun importManual(context: Context, track: Track, uri: Uri): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val bytes = context.contentResolver.openInputStream(uri)?.use { input ->
+                val out = ByteArrayOutputStream()
+                val buf = ByteArray(8 * 1024)
+                while (true) {
+                    val n = input.read(buf)
+                    if (n < 0) break
+                    out.write(buf, 0, n)
+                    if (out.size() > MAX_IMPORT_BYTES) return@withContext false
+                }
+                out.toByteArray()
+            } ?: return@withContext false
+            val text = decode(bytes).removePrefix("\uFEFF")
+            val synced = parseLrc(text)
+            val result = when {
+                synced.isNotEmpty() -> LyricsResult.Synced(synced)
+                text.isNotBlank() -> LyricsResult.Plain(text.lines().map { it.trimEnd() })
+                else -> return@withContext false
+            }
+            val file = manualFile(context, track)
+            file.parentFile?.mkdirs()
+            writeCache(file, result)
+            true
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    /** UTF-8 أولاً، وإن لم يكن الملف UTF-8 صالحاً فنقرأه بترميز windows-1256 (ملفات عربية قديمة). */
+    private fun decode(bytes: ByteArray): String {
+        val strict = Charsets.UTF_8.newDecoder()
+            .onMalformedInput(CodingErrorAction.REPORT)
+            .onUnmappableCharacter(CodingErrorAction.REPORT)
+        return try {
+            strict.decode(ByteBuffer.wrap(bytes)).toString()
+        } catch (_: CharacterCodingException) {
+            String(bytes, charset("windows-1256"))
+        }
     }
 
     private fun fetch(title: String, artist: String?, seconds: Long): LyricsResult {

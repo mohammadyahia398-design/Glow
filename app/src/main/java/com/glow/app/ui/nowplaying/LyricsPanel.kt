@@ -1,10 +1,15 @@
 package com.glow.app.ui.nowplaying
 
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -19,6 +24,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -33,7 +39,9 @@ import androidx.compose.ui.unit.sp
 import com.glow.app.media.LyricsRepository
 import com.glow.app.media.LyricsResult
 import com.glow.app.media.Track
+import com.glow.app.ui.common.LocalGlowSnackbar
 import com.glow.app.ui.theme.LocalGlowSkin
+import kotlinx.coroutines.launch
 import kotlin.math.abs
 
 /** لوحة الكلمات: تحلّ محل الغلاف في شاشة التشغيل. السطر الحالي واضح والباقي خافت، والضغط على سطر ينتقل إليه. */
@@ -52,6 +60,22 @@ fun LyricsPanel(
         value = null
         value = LyricsRepository.load(context, track)
     }
+    val scope = rememberCoroutineScope()
+    val snackbar = LocalGlowSnackbar.current
+    val hasManual = remember(track.id, attempt) { LyricsRepository.hasManual(context, track) }
+    val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) {
+            scope.launch {
+                val ok = LyricsRepository.importManual(context, track, uri)
+                if (ok) {
+                    attempt++
+                } else {
+                    val msg = "تعذّرت قراءة الملف أو لا يحوي كلمات"
+                    if (snackbar != null) snackbar.show(msg) else Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
 
     Box(
         modifier
@@ -60,7 +84,7 @@ fun LyricsPanel(
     ) {
         when (val r = result) {
             null -> Message("جارٍ البحث عن الكلمات…", contentColor)
-            LyricsResult.None -> Message("لا توجد كلمات لهذه الأغنية", contentColor)
+            LyricsResult.None -> Message("لا توجد كلمات لهذه الأغنية\nيمكنك اختيار ملف كلمات بنفسك", contentColor)
             LyricsResult.Failed -> Column(
                 Modifier.align(Alignment.Center),
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -80,7 +104,7 @@ fun LyricsPanel(
             }
             is LyricsResult.Plain -> LazyColumn(
                 Modifier.fillMaxSize(),
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 24.dp, vertical = 28.dp),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 24.dp, end = 24.dp, top = 28.dp, bottom = 72.dp),
             ) {
                 itemsIndexed(r.lines) { _, line ->
                     Text(
@@ -95,6 +119,31 @@ fun LyricsPanel(
             }
             is LyricsResult.Synced -> SyncedLines(r, positionMs, onSeek, contentColor)
         }
+        Row(
+            Modifier.align(Alignment.BottomStart).padding(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            LyricsPill("اختيار ملف") { picker.launch(arrayOf("*/*")) }
+            if (hasManual) {
+                LyricsPill("إزالة ملفي") {
+                    LyricsRepository.clearManual(context, track)
+                    attempt++
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LyricsPill(text: String, onClick: () -> Unit) {
+    Box(
+        Modifier
+            .clip(RoundedCornerShape(50))
+            .background(Color.Black.copy(alpha = 0.42f))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 8.dp),
+    ) {
+        Text(text, color = Color.White, fontSize = 12.5.sp, fontWeight = FontWeight.SemiBold)
     }
 }
 
