@@ -1,5 +1,6 @@
 package com.glow.app.ui.common
 
+import androidx.compose.ui.geometry.isSpecified
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.remember
@@ -50,8 +51,11 @@ fun Modifier.glowLiquid(
             effects = {
                 vibrancy()
                 blur(2f.dp.toPx())
-                val d = size.minDimension
-                lens(d * 0.25f, d * 0.5f)
+                // الحجم غير محدد لحظة الإرفاق الأولى؛ نتخطى الانكسار حتى يُقاس العنصر.
+                if (size.isSpecified && size.minDimension > 0f) {
+                    val d = size.minDimension
+                    lens(d * 0.25f, d * 0.5f)
+                }
             },
             layerBlock = if (interactive) {
                 {

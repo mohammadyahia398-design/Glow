@@ -1,5 +1,6 @@
 package com.glow.app.ui.settings
 
+import androidx.compose.ui.geometry.isSpecified
 import com.glow.app.ui.theme.accentBrush
 import com.glow.app.ui.common.glowLiquid
 import com.glow.app.ui.common.LocalLiquidBackdrop
@@ -433,7 +434,9 @@ private fun ThemeRow(selected: ThemeMode, onSelect: (ThemeMode) -> Unit) {
                                 effects = {
                                     vibrancy()
                                     blur(2f.dp.toPx())
-                                    lens(size.minDimension * 0.3f, size.minDimension * 0.6f)
+                                    if (size.isSpecified && size.minDimension > 0f) {
+                                        lens(size.minDimension * 0.3f, size.minDimension * 0.6f)
+                                    }
                                 },
                                 layerBlock = {
                                     scaleX = bulge
