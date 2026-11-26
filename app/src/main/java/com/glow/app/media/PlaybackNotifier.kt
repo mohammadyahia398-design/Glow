@@ -6,6 +6,7 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
 import android.graphics.drawable.Icon
 import android.media.session.MediaSession
 import com.glow.app.MainActivity
@@ -39,7 +40,7 @@ class PlaybackNotifier(private val context: Context) {
         }
     }
 
-    fun build(state: PlayerState, token: MediaSession.Token): Notification {
+    fun build(state: PlayerState, token: MediaSession.Token, art: Bitmap? = null): Notification {
         val track = state.current
         val toggleIcon = if (state.isPlaying) R.drawable.ic_notif_pause else R.drawable.ic_notif_play
         val toggleLabel = if (state.isPlaying) "إيقاف مؤقت" else "تشغيل"
@@ -56,6 +57,7 @@ class PlaybackNotifier(private val context: Context) {
             .setCategory(Notification.CATEGORY_TRANSPORT)
             .setContentTitle(title)
             .setContentText(text)
+            .setLargeIcon(art)
             .setContentIntent(openAppIntent)
             .setVisibility(Notification.VISIBILITY_PUBLIC)
             .setOnlyAlertOnce(true)

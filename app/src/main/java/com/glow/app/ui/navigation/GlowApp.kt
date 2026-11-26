@@ -48,6 +48,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.glow.app.media.MediaStoreRepository
+import com.glow.app.media.displayTitle
 import com.glow.app.media.PlaybackConnection
 import com.glow.app.media.PlayerState
 import com.glow.app.media.Track
@@ -199,7 +200,13 @@ fun GlowApp(settings: SettingsStore, modifier: Modifier = Modifier) {
     val current = playerState.current
     LaunchedEffect(current?.id) { current?.let { library.recordPlay(it.id) } }
     LaunchedEffect(controller) {
-        controller?.playbackErrors?.collect { snackbar.show("تعذّر تشغيل الأغنية، تم تخطيها") }
+        controller?.playbackErrors?.collect { f ->
+            val name = f.track?.displayTitle?.let { "«$it»" } ?: "الأغنية"
+            val text = "تعذّر تشغيل $name: ${f.reason}" + if (f.stopped) "" else " — تم التخطي"
+            val failed = f.track
+            if (failed != null) snackbar.show(text, "إعادة المحاولة") { controller?.retryTrack(failed) }
+            else snackbar.show(text)
+        }
     }
 
     ProvideGlassConfig(glassConfig) {

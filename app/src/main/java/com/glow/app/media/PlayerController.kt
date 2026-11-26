@@ -54,9 +54,9 @@ class PlayerController(
     private var speed = 1f
     private var volume = 1f
     private var sleepJob: Job? = null
-    private val _playbackErrors = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
-    /** يصدر عند تعذّر تشغيل مقطع (فيُتخطى). */
-    val playbackErrors: SharedFlow<Unit> = _playbackErrors
+    private val _playbackErrors = MutableSharedFlow<PlaybackFailure>(extraBufferCapacity = 1)
+    /** يصدر عند تعذّر تشغيل مقطع (فيُتخطى أو يتوقف التشغيل)، مع السبب. */
+    val playbackErrors: SharedFlow<PlaybackFailure> = _playbackErrors
     private val _sleepEndsAt = MutableStateFlow<Long?>(null)
 
     /** وقت انتهاء مؤقّت النوم بالمللي ثانية، أو null إن لم يكن مفعّلاً. */
@@ -471,7 +471,7 @@ class PlayerController(
                 }
 
                 override fun onPlayerError(error: PlaybackException) {
-                    if (player === exo) handleError()
+                    if (player === exo) handleError(error)
                 }
             })
 
@@ -508,10 +508,31 @@ class PlayerController(
     }
 
     /** خطأ أثناء التحضير أو التشغيل: نتخطى المقطع التالف. */
-    private fun handleError() {
-        _playbackErrors.tryEmit(Unit)
+    private fun handleError(error: PlaybackException?) {
+        val failed = queue.currentIndex?.let { tracks.getOrNull(it) }
         releasePlayer()
-        if (advanceAfterFailure()) playCurrent()
+        val advanced = advanceAfterFailure()
+        _playbackErrors.tryEmit(PlaybackFailure(failed, reasonFor(error), stopped = !advanced))
+        if (advanced) playCurrent()
+    }
+
+    private fun reasonFor(error: PlaybackException?): String = when (error?.errorCode) {
+        PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED,
+        PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT -> "تحقق من اتصالك بالإنترنت"
+        PlaybackException.ERROR_CODE_IO_FILE_NOT_FOUND -> "الملف لم يعد موجوداً"
+        PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS -> "الخادم لم يستجب لهذا المقطع"
+        PlaybackException.ERROR_CODE_PARSING_CONTAINER_MALFORMED,
+        PlaybackException.ERROR_CODE_PARSING_CONTAINER_UNSUPPORTED,
+        PlaybackException.ERROR_CODE_DECODING_FAILED -> "الملف تالف أو غير مدعوم"
+        else -> "حدث خطأ غير متوقع"
+    }
+
+    /** يعيد تشغيل مقطع فشل سابقاً (من زر «إعادة المحاولة»). */
+    fun retryTrack(track: Track) {
+        val index = tracks.indexOfFirst { it.id == track.id }
+        if (index < 0) return
+        val position = queue.orderedIndices().indexOf(index)
+        if (position >= 0) playQueueItem(position)
     }
 
     /** @return false إن تعطلت القائمة كلها أو انتهت. */

@@ -9,6 +9,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.ServiceInfo
+import android.graphics.Bitmap
 import android.media.AudioManager
 import android.media.MediaMetadata
 import android.media.session.MediaSession
@@ -19,6 +20,7 @@ import android.os.IBinder
 import android.os.SystemClock
 import androidx.core.content.ContextCompat
 import com.glow.app.MainActivity
+import com.glow.app.ui.common.loadTrackArtwork
 import kotlin.math.abs
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -27,6 +29,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * خدمة التشغيل: تملك [PlayerController] وجلسة الوسائط والإشعار.
@@ -66,6 +69,12 @@ class GlowMediaSessionService : Service() {
     // آخر قيم أُرسلت إلى الجلسة، لتفادي تحديثها كل نصف ثانية بلا حاجة.
     private var metaTrackId: Long? = null
     private var metaDurationMs = -1L
+    private var metaHasArt = false
+
+    // غلاف المقطع الحالي (محلي أو إنترنتي) للإشعار وشاشة القفل.
+    private var artTrackId: Long? = null
+    private var artBitmap: Bitmap? = null
+    private var artJob: Job? = null
     private var pbCode = -1
     private var pbTrackId: Long? = null
     private var pbPositionMs = 0L
@@ -112,7 +121,7 @@ class GlowMediaSessionService : Service() {
         }
         // startForegroundService يفرض استدعاء startForeground خلال خمس ثوانٍ.
         val state = controller.state.value
-        enterForeground(notifier.build(state, session.sessionToken))
+        enterForeground(notifier.build(state, session.sessionToken, artFor(state.current)))
         lastKey = state.current?.id to state.isPlaying
 
         when {
@@ -151,14 +160,35 @@ class GlowMediaSessionService : Service() {
 
     // ── العرض ──────────────────────────────────────────────────
 
+    private fun artFor(track: Track?): Bitmap? = if (track != null && track.id == artTrackId) artBitmap else null
+
+    /** يحمّل غلاف المقطع الجديد في الخلفية ثم يحدّث الجلسة والإشعار. */
+    private fun ensureArt(track: Track?) {
+        if (track?.id == artTrackId) return
+        artTrackId = track?.id
+        artBitmap = null
+        artJob?.cancel()
+        if (track == null) return
+        artJob = scope.launch {
+            val bmp = withContext(Dispatchers.IO) { loadTrackArtwork(applicationContext, track) }
+            if (bmp == null || artTrackId != track.id) return@launch
+            artBitmap = bmp
+            val latest = controller.state.value
+            if (latest.current?.id != track.id) return@launch
+            updateSession(latest)
+            notificationManager.notify(NOTIFICATION_ID, notifier.build(latest, session.sessionToken, bmp))
+        }
+    }
+
     private fun render(state: PlayerState) {
+        ensureArt(state.current)
         updateSession(state)
 
         val key = state.current?.id to state.isPlaying
         if (key == lastKey) return
         lastKey = key
 
-        val notification = notifier.build(state, session.sessionToken)
+        val notification = notifier.build(state, session.sessionToken, artFor(state.current))
         when {
             state.isPlaying -> {
                 cancelDetach()
@@ -179,11 +209,14 @@ class GlowMediaSessionService : Service() {
     private fun updateSession(state: PlayerState) {
         val track = state.current
 
-        if (track?.id != metaTrackId || state.durationMs != metaDurationMs) {
+        val art = artFor(track)
+        if (track?.id != metaTrackId || state.durationMs != metaDurationMs || (art != null) != metaHasArt) {
             metaTrackId = track?.id
             metaDurationMs = state.durationMs
+            metaHasArt = art != null
             session.setMetadata(
                 MediaMetadata.Builder()
+                    .putBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART, art)
                     .putString(MediaMetadata.METADATA_KEY_TITLE, track?.title)
                     .putString(MediaMetadata.METADATA_KEY_ARTIST, track?.artist)
                     .putString(MediaMetadata.METADATA_KEY_ALBUM, track?.album)
@@ -254,7 +287,7 @@ class GlowMediaSessionService : Service() {
                     leaveForeground(detach = true)
                     notificationManager.notify(
                         NOTIFICATION_ID,
-                        notifier.build(latest, session.sessionToken),
+                        notifier.build(latest, session.sessionToken, artFor(latest.current)),
                     )
                 } else {
                     leaveForeground(detach = false)

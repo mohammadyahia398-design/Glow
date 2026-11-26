@@ -63,6 +63,9 @@ private fun loadArt(context: Context, track: Track, px: Int): Bitmap? {
     return bmp
 }
 
+/** يحمّل غلاف المقطع للإشعار وجلسة الوسائط (يُستدعى من خيط خلفي). */
+fun loadTrackArtwork(context: Context, track: Track, px: Int = 512): Bitmap? = loadArt(context, track, px)
+
 /** غلاف المقطع (أو null إن لم يوجد). يُحمَّل في الخلفية ويُخزَّن مؤقتاً. */
 @Composable
 fun rememberArt(track: Track?, px: Int): Bitmap? {
