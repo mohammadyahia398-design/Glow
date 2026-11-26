@@ -139,8 +139,11 @@ fun GlowApp(settings: SettingsStore, modifier: Modifier = Modifier) {
     var rescan by remember { mutableIntStateOf(0) }
     LaunchedEffect(hasAudioAccess, rescan) {
         if (hasAudioAccess) {
+            val isRescan = rescan > 0
+            if (isRescan) loaded = false
             tracks = repository.loadTracks()
             loaded = true
+            if (isRescan) snackbar.show("تم تحديث المكتبة، عدد الأغاني: ${tracks.size}")
         }
     }
     val visibleTracks = remember(tracks, settings.skipShortSongs, settings.skipShortSeconds) {
