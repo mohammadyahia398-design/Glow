@@ -132,6 +132,7 @@ fun LibraryScreen(
     onOpen: (MediaGroup) -> Unit,
     onOpenSettings: () -> Unit,
     onOpenVocalIsolation: () -> Unit = {},
+    onOpenOnline: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val skin = LocalGlowSkin.current
@@ -203,6 +204,7 @@ fun LibraryScreen(
             ) {
                 item { GlowChip("الأنواع", tab == LibraryTab.Genres, { showGenres = !showGenres }) }
                 item { GlowChip("عزل الصوت", false, onOpenVocalIsolation) }
+                item { GlowChip("الإنترنت", false, onOpenOnline) }
             }
         }
         if (loaded && hasAudioAccess && tracks.isNotEmpty() &&

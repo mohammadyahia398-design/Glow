@@ -74,6 +74,7 @@ import com.glow.app.ui.library.LibraryScreen
 import com.glow.app.ui.nowplaying.ArtMiniPlayer
 import com.glow.app.ui.nowplaying.ArtMiniPlayerHeight
 import com.glow.app.ui.nowplaying.NowPlayingScreen
+import com.glow.app.ui.online.OnlineSearchScreen
 import com.glow.app.ui.vocal.VocalIsolationScreen
 import com.glow.app.ui.common.GlowTopBar
 import com.glow.app.ui.theme.LocalGlowSkin
@@ -159,6 +160,7 @@ fun GlowApp(settings: SettingsStore, modifier: Modifier = Modifier) {
     var showPlayer by remember { mutableStateOf(false) }
     var showSettings by remember { mutableStateOf(false) }
     var showVocal by remember { mutableStateOf(false) }
+    var showOnline by remember { mutableStateOf(false) }
     var libraryTab by remember { mutableStateOf(LibraryTab.Tracks) }
     val barItems = remember {
         LibraryTab.barTabs.map { t ->
@@ -168,6 +170,7 @@ fun GlowApp(settings: SettingsStore, modifier: Modifier = Modifier) {
     // أول معالج مسجَّل أقل أولوية: يُغلق المشغّل ثم الألبوم ثم الإعدادات.
     BackHandler(enabled = showSettings) { showSettings = false }
     BackHandler(enabled = showVocal) { showVocal = false }
+    BackHandler(enabled = showOnline) { showOnline = false }
     BackHandler(enabled = showPlayer) { showPlayer = false }
     BackHandler(enabled = !showPlayer && collection != null) { collection = null }
 
@@ -190,7 +193,7 @@ fun GlowApp(settings: SettingsStore, modifier: Modifier = Modifier) {
 
     ProvideGlassConfig(glassConfig) {
       CompositionLocalProvider(LocalGlowSnackbar provides snackbar) {
-        val barVisible = !showSettings && !showVocal && collection == null && !showPlayer
+        val barVisible = !showSettings && !showVocal && !showOnline && collection == null && !showPlayer
         val miniVisible = current != null && !showPlayer
         Box(modifier.fillMaxSize()) {
             Box(
@@ -205,6 +208,15 @@ fun GlowApp(settings: SettingsStore, modifier: Modifier = Modifier) {
                     Column(Modifier.fillMaxSize()) {
                         GlowTopBar(title = null, onBack = { showVocal = false })
                         VocalIsolationScreen(Modifier.weight(1f))
+                    }
+                } else if (showOnline) {
+                    Column(Modifier.fillMaxSize()) {
+                        GlowTopBar(title = "البحث في الإنترنت", onBack = { showOnline = false })
+                        OnlineSearchScreen(
+                            currentId = current?.id,
+                            onPlay = { list, i -> connection.play(list, i) },
+                            modifier = Modifier.weight(1f),
+                        )
                     }
                 } else if (showSettings) {
                     SettingsScreen(
@@ -251,6 +263,7 @@ fun GlowApp(settings: SettingsStore, modifier: Modifier = Modifier) {
                         onOpen = { collection = it },
                         onOpenSettings = { showSettings = true },
                         onOpenVocalIsolation = { showVocal = true },
+                        onOpenOnline = { showOnline = true },
                     )
                 } else {
                     CollectionScreen(
