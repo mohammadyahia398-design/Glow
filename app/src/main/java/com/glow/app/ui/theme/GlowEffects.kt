@@ -55,7 +55,7 @@ fun Modifier.glassSurface(
         shape = shape,
     )
 
-/** خلفية التطبيق بجو Glow: تدرج داكن + توهج Amber علوي وTwilight سفلي. */
+/** خلفية التطبيق: أسود + هالتان خافتتان جداً (ماجنتا أعلى، بنفسجي أسفل) لإيحاء ضوء هادئ لا يشتت. */
 @Composable
 fun GlowBackdrop(
     modifier: Modifier = Modifier,
@@ -68,14 +68,14 @@ fun GlowBackdrop(
             .drawBehind {
                 drawRect(
                     brush = Brush.radialGradient(
-                        colors = listOf(GlowPalette.Amber.copy(alpha = 0.10f), Color.Transparent),
+                        colors = listOf(GlowPalette.Amber.copy(alpha = 0.06f), Color.Transparent),
                         center = Offset(size.width * 0.10f, 0f),
                         radius = size.minDimension * 0.9f,
                     ),
                 )
                 drawRect(
                     brush = Brush.radialGradient(
-                        colors = listOf(GlowPalette.TwilightBlue.copy(alpha = 0.14f), Color.Transparent),
+                        colors = listOf(GlowPalette.TwilightBlue.copy(alpha = 0.08f), Color.Transparent),
                         center = Offset(size.width * 0.95f, size.height),
                         radius = size.minDimension * 1.1f,
                     ),

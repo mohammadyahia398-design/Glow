@@ -6,10 +6,11 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 
 /**
- * الألوان الخام لهوية Glow — Luminous Minimalism.
+ * الألوان الخام لهوية Glow.
  *
- * الألوان الستة الأولى مأخوذة حرفياً من المرجع البصري،
- * أما المشتقة (Night, Surface, ...) فهي درجات مدروسة من Charcoal لبناء عمق الواجهة.
+ * قاعدة الدفعة 1: الأسود والأبيض المحايد يسيطران، وستة ألوان فقط من اللوحة الرسمية مسموحة:
+ * F042FF (تمييز) · 7226FF (بنفسجي) · 87F5F5 (لمسة نادرة) · E5E8F5 (نص) · FFE5F1 (لمسة فاتحة) · 010030 (حبر الوضع الفاتح).
+ * باقي اللوحة الرسمية محفوظ في الوثيقة ولا يُستعمل في الواجهة حتى لا يشتت البصر.
  */
 object GlowPalette {
     // Canonical Luminous Minimalism palette (from the project handoff).
@@ -21,21 +22,23 @@ object GlowPalette {
     val Coral = Color(0xFFB07CFF)
     val Twilight = Color(0xFF7226FF)
     val Mint = Color(0xFF87F5F5)
-    val Ivory = Color(0xFFE4D4FF)
-    val Muted = Color(0xFF9A90B8)
+    val Ivory = Color(0xFFE5E8F5)
+    val Muted = Color(0xFFA3A7B8)
 
     // Backward-compatible aliases used by existing screens and effects.
     val Charcoal = Void
     val TwilightBlue = Twilight
     val Teal = Mint
     val TwilightSoft = Color(0xFFC9B2FF)
+    val Blush = Color(0xFFFFE5F1)
+    val Navy = Color(0xFF010030)
     val OutlineSolid = Color(0xFF26263A)
 
     // Shared glass tokens. Strong optical effects are implemented in the glass batch.
-    val Hairline = Color(0x26E4D4FF)
+    val Hairline = Color(0x26E5E8F5)
     val GlassFill = Color(0xA60B0B14)
-    val GlassHighlight = Color(0x40E4D4FF)
-    val GlassEdge = Color(0x66E4D4FF)
+    val GlassHighlight = Color(0x40E5E8F5)
+    val GlassEdge = Color(0x66E5E8F5)
     val GlassShadow = Color(0x66000000)
 }
 

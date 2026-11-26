@@ -23,7 +23,7 @@ data class GlowSkin(
     val glassBase: Color,
     val glassBorder: Color,
     val containerColor: Color = Color(0xFF151522),
-    val onContainerColor: Color = Color(0xFFE4D4FF),
+    val onContainerColor: Color = Color(0xFFE5E8F5),
     val outlineVariantColor: Color = Color(0xFF26263A),
 )
 
@@ -33,9 +33,9 @@ object GlowSkins {
     private val Surface = Color(0xFF0B0B14)
     private val Lifted = Color(0xFF151522)
     private val Amber = Color(0xFFF042FF)
-    private val Ivory = Color(0xFFE4D4FF)
-    private val Muted = Color(0xFF9A90B8)
-    private val LightInk = Color(0xFF0E0060)
+    private val Ivory = Color(0xFFE5E8F5)
+    private val Muted = Color(0xFFA3A7B8)
+    private val LightInk = Color(0xFF010030)
 
     val Dark = GlowSkin(
         isDark = true,
@@ -61,22 +61,22 @@ object GlowSkins {
     val Light = GlowSkin(
         isDark = false,
         bgTop = Color(0xFFFEFDFF),
-        bgBottom = Color(0xFFF6F1FD),
+        bgBottom = Color(0xFFFFF7FB),
         text = LightInk,
-        textSecondary = Color(0xFF5B5490),
+        textSecondary = Color(0xFF55526E),
         accent = Color(0xFFD62BEA),
         onAccent = Color.White,
         accentText = Color(0xFF7226FF),
         panel = Color(0xFFFFFFFF),
-        chip = Color(0xFFF0E9FC),
+        chip = Color(0xFFF3F1F7),
         divider = LightInk.copy(alpha = 0.10f),
         sheet = Color(0xFFFFFFFF),
         glassTint = Color.White,
         glassBase = Color(0xFFFEFDFF),
         glassBorder = LightInk.copy(alpha = 0.18f),
-        containerColor = Color(0xFFEBDDFF),
+        containerColor = Color(0xFFFFE5F1),
         onContainerColor = LightInk,
-        outlineVariantColor = Color(0xFFDDD2F2),
+        outlineVariantColor = Color(0xFFE2DEEA),
     )
 }
 
