@@ -2,6 +2,13 @@ package com.glow.app.ui.online
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import com.glow.app.ui.common.GlowRoundButton
+import com.glow.app.ui.common.NowPlayingBars
+import com.glow.app.ui.common.glowLiquid
+import com.glow.app.ui.icons.CoreGlyphs
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Box
@@ -68,6 +75,7 @@ fun OnlineSearchScreen(
     store: LibraryStore,
     onPlay: (List<Track>, Int) -> Unit,
     modifier: Modifier = Modifier,
+    isPlaying: Boolean = false,
 ) {
     val skin = LocalGlowSkin.current
     var query by remember { mutableStateOf("") }
@@ -102,8 +110,13 @@ fun OnlineSearchScreen(
                 .fillMaxWidth()
                 .padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 12.dp)
                 .height(52.dp)
-                .clip(RoundedCornerShape(26.dp))
-                .background(skin.chip)
+                .glowLiquid(
+                    shape = RoundedCornerShape(26.dp),
+                    fill = Brush.verticalGradient(listOf(skin.chip, skin.chip)),
+                    isDark = skin.isDark,
+                    fillAlpha = 0.6f,
+                    interactive = false,
+                )
                 .padding(horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -152,20 +165,45 @@ fun OnlineSearchScreen(
                 } else {
                     LazyColumn(contentPadding = PaddingValues(top = 8.dp, bottom = LibraryBottomInset)) {
                         itemsIndexed(s.tracks, key = { _, t -> t.id }) { i, t ->
+                            val isCurrent = t.id == currentId
                             Row(
                                 Modifier
                                     .fillMaxWidth()
-                                    .clickable { onPlay(s.tracks, i) }
-                                    .padding(start = 20.dp, end = 4.dp, top = 7.dp, bottom = 7.dp),
+                                    .padding(horizontal = 10.dp, vertical = 1.dp)
+                                    .clip(RoundedCornerShape(20.dp))
+                                    .background(
+                                        if (isCurrent) skin.accent.copy(alpha = if (skin.isDark) 0.14f else 0.10f)
+                                        else Color.Transparent,
+                                    )
+                                    .clickable(
+                                        interactionSource = remember { MutableInteractionSource() },
+                                        indication = null,
+                                    ) { onPlay(s.tracks, i) }
+                                    .padding(start = 10.dp, end = 6.dp, top = 7.dp, bottom = 7.dp),
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                horizontalArrangement = Arrangement.spacedBy(14.dp),
                             ) {
-                                AlbumArt(t, Modifier.size(52.dp), radius = 14.dp)
+                                Box(Modifier.size(56.dp)) {
+                                    AlbumArt(t, Modifier.fillMaxSize(), radius = 15.dp)
+                                    if (isCurrent) {
+                                        Box(
+                                            Modifier
+                                                .fillMaxSize()
+                                                .clip(RoundedCornerShape(15.dp))
+                                                .background(Color.Black.copy(alpha = 0.42f)),
+                                            contentAlignment = Alignment.Center,
+                                        ) {
+                                            NowPlayingBars(Color.White, isPlaying, Modifier.size(20.dp))
+                                        }
+                                    }
+                                }
                                 Column(Modifier.weight(1f)) {
                                     Text(
                                         t.title,
-                                        color = if (t.id == currentId) skin.accentText else skin.text,
+                                        color = if (isCurrent) skin.accentText else skin.text,
                                         fontSize = 16.sp,
+                                        fontWeight = if (isCurrent) androidx.compose.ui.text.font.FontWeight.SemiBold
+                                        else androidx.compose.ui.text.font.FontWeight.Medium,
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis,
                                     )
@@ -177,9 +215,10 @@ fun OnlineSearchScreen(
                                         overflow = TextOverflow.Ellipsis,
                                     )
                                 }
-                                GlowIconTap("المزيد", { menuFor = t }) {
-                                    GlowIcon(IconKind.More, skin.textSecondary, 22.dp, Modifier.align(Alignment.Center))
-                                }
+                                GlowRoundButton(
+                                    CoreGlyphs.More, "المزيد", { menuFor = t },
+                                    size = 38.dp, tint = skin.textSecondary,
+                                )
                             }
                         }
                     }

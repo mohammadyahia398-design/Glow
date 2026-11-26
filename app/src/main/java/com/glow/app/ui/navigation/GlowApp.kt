@@ -257,6 +257,7 @@ fun GlowApp(settings: SettingsStore, modifier: Modifier = Modifier) {
                         GlowTopBar(title = "البحث في الإنترنت", onBack = { showOnline = false })
                         OnlineSearchScreen(
                             currentId = current?.id,
+                            isPlaying = playerState.isPlaying,
                             store = library,
                             onPlay = { list, i -> connection.play(list, i) },
                             modifier = Modifier.weight(1f),
