@@ -1,11 +1,14 @@
 package com.glow.app.ui.nowplaying
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -14,12 +17,24 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
+import kotlin.math.roundToInt
 import androidx.compose.ui.unit.sp
 import com.glow.app.media.PlayerState
 import com.glow.app.media.Track
@@ -31,20 +46,33 @@ import com.glow.app.ui.common.GlowTextButton
 import com.glow.app.ui.icons.CoreGlyphs
 import com.glow.app.ui.theme.LocalGlowSkin
 
+private val QueueRowHeight = 64.dp
+private val QueueRowGap = 4.dp
+
 /**
- * قائمة التشغيل الحية: اضغط أي مقطع لتشغيله، وزرّ واحد لإزالته من الطابور فقط.
- * أُزيلت أسهم النقل والأرقام لأنها زحمة؛ [onMove] باقٍ في التوقيع للتوافق ولسحب الترتيب لاحقاً.
+ * قائمة التشغيل الحية: اضغط أي مقطع لتشغيله، واضغط مطولاً ثم اسحب لتغيير ترتيبه،
+ * وزرّ واحد لإزالته من الطابور.
  */
 @Composable
 fun QueueSheet(
     state: PlayerState,
     onDismiss: () -> Unit,
     onPlayAt: (Int) -> Unit,
-    @Suppress("UNUSED_PARAMETER") onMove: (Int, Int) -> Unit,
+    onMove: (Int, Int) -> Unit,
     onRemove: (Int) -> Unit,
     onClearUpcoming: () -> Unit,
 ) {
     val skin = LocalGlowSkin.current
+    val haptic = LocalHapticFeedback.current
+    val stepPx = with(LocalDensity.current) { (QueueRowHeight + QueueRowGap).toPx() }
+    // نسخة محلية تُعرض أثناء السحب وبعده مباشرة، وتُستبدل بالحقيقية عندما يتغير الطابور.
+    var local by remember(state.queue) { mutableStateOf(state.queue) }
+    var dragId by remember { mutableStateOf<Long?>(null) }
+    var dragOffset by remember { mutableFloatStateOf(0f) }
+    val currentId = state.queue.getOrNull(state.queuePosition)?.id
+    val dragFrom = local.indexOfFirst { it.id == dragId }
+    val dragTarget =
+        if (dragFrom >= 0) (dragFrom + (dragOffset / stepPx).roundToInt()).coerceIn(0, local.lastIndex) else -1
 
     GlowBottomSheet(onDismiss = onDismiss) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 18.dp).padding(bottom = 24.dp)) {
@@ -58,6 +86,11 @@ fun QueueSheet(
                         "${state.queue.size} مقطع · ${state.upcomingCount} قادم",
                         color = skin.textSecondary,
                         fontSize = 13.sp,
+                    )
+                    Text(
+                        "اضغط مطولاً على مقطع ثم اسحبه لتغيير ترتيبه",
+                        color = skin.textSecondary.copy(alpha = 0.8f),
+                        fontSize = 11.5.sp,
                     )
                 }
                 if (state.upcomingCount > 0) {
@@ -76,14 +109,63 @@ fun QueueSheet(
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxWidth().heightIn(max = 520.dp).padding(top = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalArrangement = Arrangement.spacedBy(QueueRowGap),
                 ) {
-                    itemsIndexed(state.queue, key = { _, track -> track.id }) { index, track ->
+                    itemsIndexed(local, key = { _, track -> track.id }) { index, track ->
+                        val dragging = index == dragFrom
+                        val shift = when {
+                            dragFrom < 0 || dragging -> 0f
+                            dragFrom < dragTarget && index in (dragFrom + 1)..dragTarget -> -stepPx
+                            dragFrom > dragTarget && index in dragTarget until dragFrom -> stepPx
+                            else -> 0f
+                        }
+                        val animatedShift by animateFloatAsState(shift, label = "queueShift")
                         QueueTrackRow(
                             track = track,
-                            current = index == state.queuePosition,
+                            current = track.id == currentId,
                             onPlay = { onPlayAt(index); onDismiss() },
                             onRemove = { onRemove(index) },
+                            modifier = Modifier
+                                .zIndex(if (dragging) 1f else 0f)
+                                .graphicsLayer {
+                                    translationY = if (dragging) dragOffset else animatedShift
+                                    if (dragging) {
+                                        scaleX = 1.03f
+                                        scaleY = 1.03f
+                                    }
+                                }
+                                .pointerInput(track.id) {
+                                    detectDragGesturesAfterLongPress(
+                                        onDragStart = {
+                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                            dragId = track.id
+                                            dragOffset = 0f
+                                        },
+                                        onDrag = { change, amount ->
+                                            change.consume()
+                                            dragOffset += amount.y
+                                        },
+                                        onDragEnd = {
+                                            val from = local.indexOfFirst { it.id == dragId }
+                                            if (from >= 0) {
+                                                val to = (from + (dragOffset / stepPx).roundToInt())
+                                                    .coerceIn(0, local.lastIndex)
+                                                if (to != from) {
+                                                    val moved = local.toMutableList()
+                                                    moved.add(to, moved.removeAt(from))
+                                                    local = moved
+                                                    onMove(from, to)
+                                                }
+                                            }
+                                            dragId = null
+                                            dragOffset = 0f
+                                        },
+                                        onDragCancel = {
+                                            dragId = null
+                                            dragOffset = 0f
+                                        },
+                                    )
+                                },
                         )
                     }
                 }
@@ -98,15 +180,17 @@ private fun QueueTrackRow(
     current: Boolean,
     onPlay: () -> Unit,
     onRemove: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val skin = LocalGlowSkin.current
     Row(
-        Modifier
+        modifier
             .fillMaxWidth()
+            .height(QueueRowHeight)
             .clip(RoundedCornerShape(18.dp))
             .background(if (current) skin.accent.copy(alpha = 0.14f) else androidx.compose.ui.graphics.Color.Transparent)
             .clickable(onClick = onPlay)
-            .padding(start = 10.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+            .padding(start = 10.dp, end = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         AlbumArt(track, Modifier.size(48.dp), radius = 14.dp)
