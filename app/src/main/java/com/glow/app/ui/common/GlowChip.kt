@@ -38,10 +38,11 @@ fun GlowChip(
     modifier: Modifier = Modifier,
 ) {
     val skin = LocalGlowSkin.current
+    val liquid = LocalLiquidBackdrop.current != null
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
     val scale by animateFloatAsState(
-        targetValue = if (pressed) 0.95f else 1f,
+        targetValue = if (pressed && !liquid) 0.95f else 1f,
         animationSpec = spring(dampingRatio = 0.6f, stiffness = 500f),
         label = "glowChipPress",
     )
@@ -57,7 +58,14 @@ fun GlowChip(
                 scaleX = scale
                 scaleY = scale
             }
-            .glowGlass(shape, background, skin.isDark, Color.White, if (selected) skin.accent else null)
+            .glowLiquid(
+                shape,
+                background,
+                skin.isDark,
+                Color.White,
+                if (selected) skin.accent else null,
+                fillAlpha = if (selected) 0.9f else 0.5f,
+            )
             .semantics { this.selected = selected }
             .clickable(
                 interactionSource = interaction,

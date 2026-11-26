@@ -1,5 +1,7 @@
 package com.glow.app.ui.common
 
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -37,15 +39,35 @@ fun GlowIconTap(
     modifier: Modifier = Modifier,
     size: Dp = 48.dp,
     background: Color = Color.Transparent,
+    glass: Boolean = background != Color.Transparent,
     content: @Composable BoxScope.() -> Unit,
 ) {
+    val skin = LocalGlowSkin.current
+    // زجاج سائل فقط حين يوجد انكسار؛ وإلا يبقى الشكل السابق كما هو تماماً.
+    val liquid = glass && LocalLiquidBackdrop.current != null
+    val fill = if (background != Color.Transparent) background else skin.chip
     Box(
         modifier
             .size(size)
-            .clip(CircleShape)
-            .background(background)
+            .then(
+                if (liquid) {
+                    Modifier.glowLiquid(
+                        CircleShape,
+                        SolidColor(fill),
+                        skin.isDark,
+                        fillAlpha = if (background != Color.Transparent && background != skin.chip) 0.88f else 0.5f,
+                    )
+                } else {
+                    Modifier.clip(CircleShape).background(background)
+                },
+            )
             .semantics { contentDescription = description }
-            .clickable(role = androidx.compose.ui.semantics.Role.Button, onClick = onClick),
+            .clickable(
+                interactionSource = null,
+                indication = if (liquid) null else LocalIndication.current,
+                role = androidx.compose.ui.semantics.Role.Button,
+                onClick = onClick,
+            ),
         contentAlignment = Alignment.Center,
         content = content,
     )
@@ -72,7 +94,7 @@ fun GlowTopBar(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (onBack != null) {
-            GlowIconTap("رجوع", onBack) { GlowIcon(backIcon, skin.text) }
+            GlowIconTap("رجوع", onBack, size = 44.dp, glass = true) { GlowIcon(backIcon, skin.text) }
         }
         Text(
             text = title.orEmpty(),

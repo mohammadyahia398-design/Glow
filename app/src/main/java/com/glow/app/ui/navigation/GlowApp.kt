@@ -1,5 +1,8 @@
 package com.glow.app.ui.navigation
 
+import com.glow.app.ui.common.LocalLiquidBackdrop
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.draw.drawBehind
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
@@ -190,6 +193,8 @@ fun GlowApp(settings: SettingsStore, modifier: Modifier = Modifier) {
     val backdrop = rememberGlassBackdrop()
     // الشريط الزجاجي السائل (أندرويد 13+): يلتقط محتوى الشاشة المجاور له، وما دون ذلك يبقى على الشريط القديم.
     val liquidBackdrop = rememberLayerBackdrop()
+    // خلفية هادئة منفصلة للأزرار الزجاجية داخل الشاشات (لا يجوز أن يلتقط العنصر المصدر الذي يحتويه).
+    val contentBackdrop = rememberLayerBackdrop()
     val useLiquidBar = tier.supportsRefraction
     val current = playerState.current
     LaunchedEffect(current?.id) { current?.let { library.recordPlay(it.id) } }
@@ -209,6 +214,31 @@ fun GlowApp(settings: SettingsStore, modifier: Modifier = Modifier) {
                     .then(if (useLiquidBar) Modifier.layerBackdrop(liquidBackdrop) else Modifier)
                     .background(Brush.verticalGradient(listOf(skin.bgTop, skin.bgBottom))),
             ) {
+                Box(
+                    Modifier
+                        .matchParentSize()
+                        .layerBackdrop(contentBackdrop)
+                        .drawBehind {
+                            drawRect(Brush.verticalGradient(listOf(skin.bgTop, skin.bgBottom)))
+                            drawRect(
+                                Brush.radialGradient(
+                                    listOf(skin.accent.copy(alpha = 0.10f), Color.Transparent),
+                                    center = Offset(size.width * 0.90f, size.height * 0.06f),
+                                    radius = size.width * 0.9f,
+                                ),
+                            )
+                            drawRect(
+                                Brush.radialGradient(
+                                    listOf(Color(0xFF7226FF).copy(alpha = 0.08f), Color.Transparent),
+                                    center = Offset(size.width * 0.08f, size.height * 0.55f),
+                                    radius = size.width * 0.8f,
+                                ),
+                            )
+                        },
+                )
+                CompositionLocalProvider(
+                    LocalLiquidBackdrop provides (if (useLiquidBar) contentBackdrop else null),
+                ) {
                 val open = collection
                 if (showVocal) {
                     Column(Modifier.fillMaxSize()) {
@@ -286,6 +316,7 @@ fun GlowApp(settings: SettingsStore, modifier: Modifier = Modifier) {
                             }
                         },
                     )
+                }
                 }
             }
 

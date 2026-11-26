@@ -1,5 +1,23 @@
 package com.glow.app.ui.settings
 
+import com.glow.app.ui.theme.accentBrush
+import com.glow.app.ui.common.glowLiquid
+import com.glow.app.ui.common.LocalLiquidBackdrop
+import com.glow.app.liquid.backdrop.effects.vibrancy
+import com.glow.app.liquid.backdrop.effects.lens
+import com.glow.app.liquid.backdrop.effects.blur
+import com.glow.app.liquid.backdrop.drawBackdrop
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -104,6 +122,7 @@ fun SettingsScreen(
 
     CompositionLocalProvider(
         LocalSettingsBackdrop provides (if (glassTier.supportsRefraction) liquidBackdrop else null),
+        LocalLiquidBackdrop provides (if (glassTier.supportsRefraction) liquidBackdrop else null),
     ) {
         Box(modifier.fillMaxSize()) {
             // خلفية هادئة بوهج واحد خفيف بلون التمييز؛ هي ما تنكسر خلف البطاقات الزجاجية.
@@ -349,15 +368,22 @@ private fun Divider() {
     )
 }
 
-/** المظهر: عنوان وتحته مفتاح مقسّم بثلاثة خيارات؛ المحدد بلون التمييز. */
+/**
+ * المظهر: كبسولة زجاجية فيها عدسة ليكويد جلاس بلون التمييز تنزلق إلى الخيار المحدد
+ * بحركة نابضية، وتنتفخ قليلاً أثناء الانتقال ثم تستقر.
+ */
 @Composable
 private fun ThemeRow(selected: ThemeMode, onSelect: (ThemeMode) -> Unit) {
     val skin = LocalGlowSkin.current
+    val backdrop = LocalLiquidBackdrop.current
     val options = listOf(
         ThemeMode.AUTO to "النظام",
         ThemeMode.LIGHT to "فاتح",
         ThemeMode.DARK to "داكن",
     )
+    val index = options.indexOfFirst { it.first == selected }.coerceAtLeast(0)
+    val pill = RoundedCornerShape(50)
+    val accent = skin.accentBrush()
     Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp)) {
         Text(
             "المظهر",
@@ -366,32 +392,99 @@ private fun ThemeRow(selected: ThemeMode, onSelect: (ThemeMode) -> Unit) {
             fontWeight = FontWeight.Medium,
         )
         Spacer(Modifier.height(12.dp))
-        Row(
+        BoxWithConstraints(
             Modifier
                 .fillMaxWidth()
-                .height(44.dp)
-                .clip(RoundedCornerShape(50))
-                .background(skin.text.copy(alpha = 0.07f))
-                .padding(3.dp),
+                .height(50.dp)
+                .glowLiquid(
+                    pill,
+                    SolidColor(skin.text),
+                    skin.isDark,
+                    fillAlpha = if (skin.isDark) 0.07f else 0.05f,
+                    interactive = false,
+                )
+                .padding(4.dp),
         ) {
-            options.forEach { (mode, label) ->
-                val on = mode == selected
-                val bg by animateColorAsState(if (on) skin.accent else Color.Transparent, label = "themeSeg")
-                Box(
-                    Modifier
-                        .weight(1f)
-                        .height(38.dp)
-                        .clip(RoundedCornerShape(50))
-                        .background(bg)
-                        .clickable { onSelect(mode) },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        label,
-                        color = if (on) skin.onAccent else skin.textSecondary,
-                        fontSize = 14.sp,
-                        fontWeight = if (on) FontWeight.SemiBold else FontWeight.Medium,
+            val segW = maxWidth / options.size
+            val target = segW * index
+            val x by animateDpAsState(
+                target,
+                spring(dampingRatio = 0.66f, stiffness = 360f),
+                label = "themeLensX",
+            )
+            val moving = kotlin.math.abs((x - target).value) > 0.5f
+            val bulge by animateFloatAsState(
+                if (moving) 1.10f else 1f,
+                spring(dampingRatio = 0.55f, stiffness = 420f),
+                label = "themeLensBulge",
+            )
+            Box(
+                Modifier
+                    .offset(x = x)
+                    .width(segW)
+                    .fillMaxHeight()
+                    .then(
+                        if (backdrop != null) {
+                            Modifier.drawBackdrop(
+                                backdrop = backdrop,
+                                shape = { pill },
+                                effects = {
+                                    vibrancy()
+                                    blur(2f.dp.toPx())
+                                    lens(size.minDimension * 0.3f, size.minDimension * 0.6f)
+                                },
+                                layerBlock = {
+                                    scaleX = bulge
+                                    scaleY = bulge
+                                },
+                                onDrawSurface = {
+                                    drawRect(accent, alpha = 0.9f)
+                                    drawRect(
+                                        Brush.verticalGradient(
+                                            listOf(Color.White.copy(alpha = 0.30f), Color.Transparent),
+                                            endY = size.height * 0.5f,
+                                        ),
+                                    )
+                                },
+                            )
+                        } else {
+                            Modifier
+                                .graphicsLayer {
+                                    scaleX = bulge
+                                    scaleY = bulge
+                                }
+                                .clip(pill)
+                                .background(accent)
+                        },
+                    ),
+            )
+            Row(Modifier.fillMaxSize()) {
+                options.forEachIndexed { i, (mode, label) ->
+                    val on = i == index
+                    val tc by animateColorAsState(
+                        if (on) skin.onAccent else skin.textSecondary,
+                        label = "themeSegText",
                     )
+                    Box(
+                        Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .clip(pill)
+                            .semantics { this.selected = on }
+                            .clickable(
+                                interactionSource = null,
+                                indication = null,
+                                role = Role.Tab,
+                            ) { onSelect(mode) },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            label,
+                            color = tc,
+                            fontSize = 14.sp,
+                            fontWeight = if (on) FontWeight.SemiBold else FontWeight.Medium,
+                        )
+                    }
                 }
             }
         }

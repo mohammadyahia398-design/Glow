@@ -59,13 +59,15 @@ private fun GlowButtonBase(
     contentColor: Color,
     fontSize: TextUnit,
     horizontalPadding: Dp,
+    fillAlpha: Float = 1f,
     content: @Composable RowScope.() -> Unit,
 ) {
     val skin = LocalGlowSkin.current
+    val liquid = LocalLiquidBackdrop.current != null
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
     val scale by animateFloatAsState(
-        targetValue = if (pressed) 0.96f else 1f,
+        targetValue = if (pressed && !liquid) 0.96f else 1f,
         animationSpec = spring(dampingRatio = 0.6f, stiffness = 500f),
         label = "glowButtonPress",
     )
@@ -76,7 +78,7 @@ private fun GlowButtonBase(
                 scaleY = scale
                 alpha = if (enabled) 1f else 0.4f
             }
-            .glowGlass(PillShape, background, skin.isDark, rimColor, glow)
+            .glowLiquid(PillShape, background, skin.isDark, rimColor, glow, fillAlpha = fillAlpha)
             .clickable(
                 interactionSource = interaction,
                 indication = null,
@@ -118,6 +120,7 @@ fun GlowFilledButton(
         contentColor = skin.onAccent,
         fontSize = 16.sp,
         horizontalPadding = 22.dp,
+        fillAlpha = 0.88f,
         content = content,
     )
 }
@@ -184,10 +187,11 @@ fun GlowRoundButton(
     tint: Color = Color.Unspecified,
 ) {
     val skin = LocalGlowSkin.current
+    val liquid = LocalLiquidBackdrop.current != null
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
     val scale by animateFloatAsState(
-        targetValue = if (pressed) 0.9f else 1f,
+        targetValue = if (pressed && !liquid) 0.9f else 1f,
         animationSpec = spring(dampingRatio = 0.6f, stiffness = 500f),
         label = "glowRoundPress",
     )
@@ -199,10 +203,11 @@ fun GlowRoundButton(
                 scaleY = scale
                 alpha = if (enabled) 1f else 0.35f
             }
-            .glowGlass(
+            .glowLiquid(
                 CircleShape,
                 Brush.verticalGradient(listOf(skin.chip.copy(alpha = 0.95f), skin.chip.copy(alpha = 0.70f))),
                 skin.isDark,
+                fillAlpha = 0.5f,
             )
             .semantics { contentDescription = description }
             .clickable(

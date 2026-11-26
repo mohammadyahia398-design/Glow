@@ -193,7 +193,7 @@ fun LibraryScreen(
                 GlowIconTap("بحث", {
                     searching = !searching
                     if (!searching) query = ""
-                }) { GlowIcon(IconKind.Search, if (searching) skin.accentText else skin.text) }
+                }, size = 44.dp, glass = true) { GlowIcon(IconKind.Search, if (searching) skin.accentText else skin.text) }
                 GlowSettingsButton(onOpenSettings, Modifier.padding(start = 4.dp, end = 8.dp))
             },
         )

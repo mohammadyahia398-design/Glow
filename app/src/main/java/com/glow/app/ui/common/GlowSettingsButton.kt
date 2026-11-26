@@ -1,5 +1,6 @@
 package com.glow.app.ui.common
 
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
@@ -37,14 +38,20 @@ fun GlowSettingsButton(
     Box(
         modifier
             .size(size)
-            .glowGlass(
+            .glowLiquid(
                 shape,
                 Brush.verticalGradient(listOf(surface.copy(alpha = 0.98f), surface.copy(alpha = 0.78f))),
                 skin.isDark,
                 skin.glassBorder,
+                fillAlpha = 0.5f,
             )
             .semantics { contentDescription = description }
-            .clickable(role = Role.Button, onClick = onClick),
+            .clickable(
+                interactionSource = null,
+                indication = if (LocalLiquidBackdrop.current != null) null else LocalIndication.current,
+                role = Role.Button,
+                onClick = onClick,
+            ),
         contentAlignment = Alignment.Center,
     ) {
         GlowIcon(IconKind.Menu, iconColor, 22.dp)

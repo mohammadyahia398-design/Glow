@@ -128,7 +128,10 @@ fun GlowDialog(
                         }
                     },
             )
-            CompositionLocalProvider(LocalDialogBackdrop provides (if (useLiquid) backdrop else null)) {
+            CompositionLocalProvider(
+                LocalDialogBackdrop provides (if (useLiquid) backdrop else null),
+                LocalLiquidBackdrop provides (if (useLiquid) backdrop else null),
+            ) {
                 Column(
                     Modifier
                         .fillMaxWidth()
