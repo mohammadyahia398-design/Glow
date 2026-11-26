@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -61,6 +62,9 @@ import com.glow.app.liquid.backdrop.backdrops.layerBackdrop
 import com.glow.app.liquid.backdrop.backdrops.rememberLayerBackdrop
 import com.glow.app.liquid.ui.GlowLiquidBottomBar
 import com.glow.app.ui.common.GlowIcon
+import com.glow.app.ui.common.GlowSnackbarHost
+import com.glow.app.ui.common.GlowSnackbarState
+import com.glow.app.ui.common.LocalGlowSnackbar
 import com.glow.app.ui.glass.components.LiquidBarItem
 import com.glow.app.ui.glass.components.LiquidBarIcon
 import com.glow.app.ui.glass.components.LiquidGlassBar
@@ -95,6 +99,7 @@ fun GlowApp(settings: SettingsStore, modifier: Modifier = Modifier) {
     val repository = remember { MediaStoreRepository(appContext) }
     val connection = remember { PlaybackConnection(appContext) }
     val library = remember { LibraryStore(appContext) }
+    val snackbar = remember { GlowSnackbarState() }
 
     DisposableEffect(connection) {
         connection.bind()
@@ -184,6 +189,7 @@ fun GlowApp(settings: SettingsStore, modifier: Modifier = Modifier) {
     LaunchedEffect(current?.id) { current?.let { library.recordPlay(it.id) } }
 
     ProvideGlassConfig(glassConfig) {
+      CompositionLocalProvider(LocalGlowSnackbar provides snackbar) {
         val barVisible = !showSettings && !showVocal && collection == null && !showPlayer
         val miniVisible = current != null && !showPlayer
         Box(modifier.fillMaxSize()) {
@@ -221,8 +227,26 @@ fun GlowApp(settings: SettingsStore, modifier: Modifier = Modifier) {
                         onRequestPermission = { launcher.launch(permissions) },
                         onPlay = { list, i -> connection.play(list, i) },
                         onQueueTrack = { track, playNext ->
-                            if (playNext) controller?.playNext(listOf(track))
-                            else controller?.addToQueue(listOf(track))
+                            val queued = stateFlow.value.queue
+                            when {
+                                queued.any { it.id == track.id } ->
+                                    snackbar.show("المقطع موجود بالفعل في الطابور")
+                                stateFlow.value.current == null -> {
+                                    controller?.addToQueue(listOf(track))
+                                    snackbar.show("بدأ تشغيل المقطع")
+                                }
+                                else -> {
+                                    if (playNext) controller?.playNext(listOf(track))
+                                    else controller?.addToQueue(listOf(track))
+                                    snackbar.show(
+                                        if (playNext) "سيُشغَّل بعد المقطع الحالي" else "أُضيف إلى نهاية الطابور",
+                                        "تراجع",
+                                    ) {
+                                        val pos = stateFlow.value.queue.indexOfFirst { it.id == track.id }
+                                        if (pos >= 0) controller?.removeQueueItem(pos)
+                                    }
+                                }
+                            }
                         },
                         onOpen = { collection = it },
                         onOpenSettings = { showSettings = true },
@@ -297,6 +321,20 @@ fun GlowApp(settings: SettingsStore, modifier: Modifier = Modifier) {
                 }
             }
 
+            // رسائل التأكيد: فوق الشريط والمشغّل المصغّر، وتحت المشغّل الكامل.
+            val snackLift by animateDpAsState(
+                (if (barVisible) BarLift else 0.dp) + (if (miniVisible) ArtMiniPlayerHeight + 12.dp else 0.dp),
+                label = "snackLift",
+            )
+            GlowSnackbarHost(
+                state = snackbar,
+                backdrop = if (useLiquidBar) liquidBackdrop else null,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .navigationBarsPadding()
+                    .padding(start = 16.dp, end = 16.dp, bottom = 12.dp + snackLift),
+            )
+
             AnimatedVisibility(
                 visible = showPlayer && current != null,
                 enter = slideInVertically { it } + fadeIn(),
@@ -319,6 +357,7 @@ fun GlowApp(settings: SettingsStore, modifier: Modifier = Modifier) {
                 )
             }
         }
+      }
     }
 }
 

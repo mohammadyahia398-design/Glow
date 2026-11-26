@@ -51,6 +51,7 @@ import com.glow.app.settings.Playlist
 import com.glow.app.ui.common.AlbumArt
 import com.glow.app.ui.common.CoverCell
 import com.glow.app.ui.common.GlowDialog
+import com.glow.app.ui.common.LocalGlowSnackbar
 import com.glow.app.ui.common.GlowDialogAction
 import com.glow.app.ui.common.GlowDialogRow
 import com.glow.app.ui.common.GlowEmptyState
@@ -118,6 +119,7 @@ fun LibraryScreen(
     var actionTrack by remember { mutableStateOf<Track?>(null) }
     var pickFor by remember { mutableStateOf<Track?>(null) }
     var newPlaylist by remember { mutableStateOf<NewPlaylist?>(null) }
+    val snackbar = LocalGlowSnackbar.current
 
     val byId = remember(tracks) { tracks.associateBy { it.id } }
     val shown = remember(tracks, query) {
@@ -271,7 +273,15 @@ fun LibraryScreen(
         ActionsDialog(
             track = t,
             isFavorite = t.id in store.favorites,
-            onToggleFavorite = { store.toggleFavorite(t.id); actionTrack = null },
+            onToggleFavorite = {
+                val wasFav = t.id in store.favorites
+                store.toggleFavorite(t.id)
+                snackbar?.show(
+                    if (wasFav) "أُزيل من المفضلة" else "أُضيف إلى المفضلة",
+                    "تراجع",
+                ) { store.toggleFavorite(t.id) }
+                actionTrack = null
+            },
             onAddToPlaylist = { pickFor = t; actionTrack = null },
             onAddToQueue = { onQueueTrack(t, false); actionTrack = null },
             onPlayNext = { onQueueTrack(t, true); actionTrack = null },
@@ -281,14 +291,30 @@ fun LibraryScreen(
     pickFor?.let { t ->
         PickPlaylistDialog(
             playlists = store.playlists,
-            onPick = { store.addToPlaylist(it.id, t.id); pickFor = null },
+            onPick = { pl ->
+                if (t.id in pl.trackIds) {
+                    snackbar?.show("المقطع موجود بالفعل في «${pl.name}»")
+                } else {
+                    store.addToPlaylist(pl.id, t.id)
+                    snackbar?.show("أُضيف إلى «${pl.name}»", "تراجع") { store.removeFromPlaylist(pl.id, t.id) }
+                }
+                pickFor = null
+            },
             onNew = { newPlaylist = NewPlaylist(t); pickFor = null },
             onDismiss = { pickFor = null },
         )
     }
     newPlaylist?.let { np ->
         NameDialog(
-            onCreate = { store.createPlaylist(it, np.track?.id); newPlaylist = null },
+            onCreate = { name ->
+                val before = store.playlists.map { it.id }.toSet()
+                store.createPlaylist(name, np.track?.id)
+                val created = store.playlists.firstOrNull { it.id !in before }
+                snackbar?.show("أُنشئت القائمة «${name.trim()}»", "تراجع") {
+                    created?.let { store.deletePlaylist(it.id) }
+                }
+                newPlaylist = null
+            },
             onDismiss = { newPlaylist = null },
         )
     }
