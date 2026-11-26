@@ -7,6 +7,11 @@ import android.provider.OpenableColumns
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,16 +26,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
 import com.glow.app.ui.common.GlowFilledButton
 import com.glow.app.ui.common.GlowOutlinedButton
 import com.glow.app.ui.common.GlowProgressBar
 import com.glow.app.ui.common.GlowRingLoader
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -177,7 +177,9 @@ fun VocalIsolationScreen(modifier: Modifier = Modifier) {
                 fontSize = 13.sp,
                 lineHeight = 20.sp,
             )
-            OutlinedTextField(
+            var endpointFocused by remember { mutableStateOf(false) }
+            val fieldShape = RoundedCornerShape(50)
+            BasicTextField(
                 value = endpoint,
                 onValueChange = {
                     endpoint = it
@@ -186,22 +188,27 @@ fun VocalIsolationScreen(modifier: Modifier = Modifier) {
                     healthMessage = "تغيّر العنوان؛ افحص الاتصال مجدداً."
                 },
                 enabled = !busy,
-                modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
-                textStyle = androidx.compose.ui.text.TextStyle(
-                    color = skin.text,
-                    fontSize = 13.sp,
-                ),
-                placeholder = { Text("https://your-worker.workers.dev") },
-                shape = RoundedCornerShape(16.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedTextColor = skin.text,
-                    unfocusedTextColor = skin.text,
-                    focusedBorderColor = skin.accent,
-                    unfocusedBorderColor = skin.divider,
-                    focusedLabelColor = skin.accentText,
-                    cursorColor = skin.accent,
-                ),
+                textStyle = androidx.compose.ui.text.TextStyle(color = skin.text, fontSize = 13.sp),
+                cursorBrush = SolidColor(skin.accent),
+                modifier = Modifier.fillMaxWidth().onFocusChanged { endpointFocused = it.isFocused },
+                decorationBox = { inner ->
+                    Box(
+                        Modifier
+                            .fillMaxWidth()
+                            .height(52.dp)
+                            .clip(fieldShape)
+                            .background(skin.chip)
+                            .border(1.dp, if (endpointFocused) skin.accent else skin.divider, fieldShape)
+                            .padding(horizontal = 20.dp),
+                        contentAlignment = Alignment.CenterStart,
+                    ) {
+                        if (endpoint.isEmpty()) {
+                            Text("https://your-worker.workers.dev", color = skin.textSecondary, fontSize = 13.sp)
+                        }
+                        inner()
+                    }
+                },
             )
             Row(
                 modifier = Modifier.fillMaxWidth(),

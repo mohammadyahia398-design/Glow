@@ -12,10 +12,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -28,6 +25,7 @@ import com.glow.app.media.PlayerState
 import com.glow.app.media.Track
 import com.glow.app.media.displayTitle
 import com.glow.app.ui.common.AlbumArt
+import com.glow.app.ui.common.GlowBottomSheet
 import com.glow.app.ui.common.GlowRoundButton
 import com.glow.app.ui.common.GlowTextButton
 import com.glow.app.ui.icons.CoreGlyphs
@@ -37,7 +35,6 @@ import com.glow.app.ui.theme.LocalGlowSkin
  * قائمة التشغيل الحية: اضغط أي مقطع لتشغيله، وزرّ واحد لإزالته من الطابور فقط.
  * أُزيلت أسهم النقل والأرقام لأنها زحمة؛ [onMove] باقٍ في التوقيع للتوافق ولسحب الترتيب لاحقاً.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun QueueSheet(
     state: PlayerState,
@@ -48,15 +45,8 @@ fun QueueSheet(
     onClearUpcoming: () -> Unit,
 ) {
     val skin = LocalGlowSkin.current
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = sheetState,
-        containerColor = skin.panel,
-        contentColor = skin.text,
-        shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp),
-    ) {
+    GlowBottomSheet(onDismiss = onDismiss) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 18.dp).padding(bottom = 24.dp)) {
             Row(
                 Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp),

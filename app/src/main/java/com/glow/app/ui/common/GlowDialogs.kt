@@ -216,9 +216,9 @@ fun RowScope.GlowDialogAction(
     }
 }
 
-/** صف خيار داخل [GlowDialog]: كبسولة زجاجية سائلة، أو كبسولة مسطّحة حيث لا انكسار. */
+/** صف خيار داخل [GlowDialog]: كبسولة زجاجية سائلة، أو كبسولة مسطّحة حيث لا انكسار. [radio] غير null يُظهر زر راديو أمام النص. */
 @Composable
-fun GlowDialogRow(text: String, onClick: () -> Unit) {
+fun GlowDialogRow(text: String, onClick: () -> Unit, radio: Boolean? = null) {
     val skin = LocalGlowSkin.current
     val backdrop = LocalDialogBackdrop.current
     Box(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
@@ -229,10 +229,15 @@ fun GlowDialogRow(text: String, onClick: () -> Unit) {
                 modifier = Modifier.fillMaxWidth(),
                 surfaceColor = Color.White.copy(alpha = 0.08f),
             ) {
+                if (radio != null) {
+                    GlowRadio(radio)
+                    Spacer(Modifier.width(14.dp))
+                }
                 Text(
                     text,
-                    color = skin.text,
+                    color = if (radio == true) skin.accentText else skin.text,
                     fontSize = 16.sp,
+                    fontWeight = if (radio == true) FontWeight.Bold else FontWeight.Normal,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     textAlign = TextAlign.Start,
@@ -248,13 +253,26 @@ fun GlowDialogRow(text: String, onClick: () -> Unit) {
                     .clickable(onClick = onClick)
                     .padding(horizontal = 20.dp, vertical = 14.dp),
             ) {
-                Text(text, color = skin.text, fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (radio != null) {
+                        GlowRadio(radio)
+                        Spacer(Modifier.width(14.dp))
+                    }
+                    Text(
+                        text,
+                        color = if (radio == true) skin.accentText else skin.text,
+                        fontSize = 16.sp,
+                        fontWeight = if (radio == true) FontWeight.Bold else FontWeight.Normal,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
         }
     }
 }
 
-/** نافذة اختيار واحد من قائمة بأزرار راديو بلون الهوية. */
+/** نافذة اختيار واحد من قائمة بصفوف زجاجية وزر راديو بلون الهوية. */
 @Composable
 fun <T> GlowChoiceDialog(
     title: String,
@@ -263,29 +281,13 @@ fun <T> GlowChoiceDialog(
     onSelect: (T) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val skin = LocalGlowSkin.current
     GlowDialog(
         title = title,
         onDismiss = onDismiss,
         actions = { GlowDialogAction("إلغاء", onDismiss) },
     ) {
         options.forEach { (value, label) ->
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(14.dp))
-                    .clickable { onSelect(value); onDismiss() }
-                    .padding(vertical = 14.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                GlowRadio(value == selected)
-                Spacer(Modifier.width(16.dp))
-                Text(
-                    label,
-                    color = if (value == selected) skin.accentText else skin.text,
-                    fontSize = 17.sp,
-                )
-            }
+            GlowDialogRow(label, onClick = { onSelect(value); onDismiss() }, radio = value == selected)
         }
     }
 }

@@ -10,12 +10,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.Slider
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -25,6 +20,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -32,13 +28,15 @@ import com.glow.app.media.DeviceEqualizer
 import com.glow.app.liquid.backdrop.backdrops.rememberCanvasBackdrop
 import com.glow.app.liquid.ui.LiquidSlider
 import com.glow.app.liquid.ui.LiquidToggle
+import com.glow.app.ui.common.GlowBottomSheet
 import com.glow.app.ui.common.GlowChip
+import com.glow.app.ui.common.LocalDialogBackdrop
+import com.glow.app.ui.glass.components.GlassSwitch
 import com.glow.app.ui.glass.core.rememberGlassTier
 import com.glow.app.ui.theme.LocalGlowSkin
 import kotlin.math.roundToInt
 
 /** لوحة معادل صوتي حيّة مرتبطة بجلسة المشغّل الحالية. */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EqualizerSheet(
     audioSessionId: Int,
@@ -61,16 +59,10 @@ fun EqualizerSheet(
     var selectedPreset by remember(engine) {
         mutableIntStateOf(engine.currentPresetIndex?.takeIf { it >= 0 }?.plus(1) ?: 0)
     }
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = sheetState,
-        modifier = modifier,
-        containerColor = skin.panel,
-        contentColor = skin.text,
-        shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp),
-    ) {
+    GlowBottomSheet(onDismiss = onDismiss, modifier = modifier) {
+        // خلفية الزجاج من اللوحة نفسها (أندرويد 13+)، وإلا خلفية مرسومة بلون السطح.
+        val sliderBackdrop = LocalDialogBackdrop.current ?: eqBackdrop
         Column(Modifier.fillMaxWidth().padding(horizontal = 22.dp).padding(bottom = 28.dp)) {
             Text(
                 "المعادل الصوتي",
@@ -110,16 +102,17 @@ fun EqualizerSheet(
                         LiquidToggle(
                             selected = { enabled },
                             onSelect = { enabled = engine.setEnabled(it) },
-                            backdrop = eqBackdrop,
+                            backdrop = sliderBackdrop,
                             accentColor = skin.accent,
                             trackColor = skin.textSecondary.copy(alpha = 0.35f),
                         )
                     } else {
-                        Switch(
+                        GlassSwitch(
                             checked = enabled,
-                            onCheckedChange = {
-                                enabled = engine.setEnabled(it)
-                            },
+                            onCheckedChange = { enabled = engine.setEnabled(it) },
+                            checkedTrackColor = skin.accent,
+                            uncheckedTrackColor = skin.textSecondary.copy(alpha = 0.35f),
+                            rimColor = Color.White,
                         )
                     }
                 }
@@ -153,7 +146,7 @@ fun EqualizerSheet(
                         val frequency = engine.centerFrequencyHz(index)
                         val label = frequency?.let(::frequencyLabel) ?: "النطاق ${index + 1}"
                         Column(Modifier.fillMaxWidth().padding(vertical = 3.dp)) {
-                            Row(
+                            if (glassTier.supportsRefraction) Row(
                                 Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically,
@@ -180,16 +173,17 @@ fun EqualizerSheet(
                                     onValueChange = onLevelChange,
                                     valueRange = range.first.toFloat()..range.last.toFloat(),
                                     visibilityThreshold = (range.last - range.first) * 0.002f,
-                                    backdrop = eqBackdrop,
+                                    backdrop = sliderBackdrop,
                                     accentColor = skin.accent,
                                     trackColor = skin.textSecondary.copy(alpha = 0.3f),
                                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
                                 )
                             } else {
-                                Slider(
-                                    value = level.toFloat(),
-                                    onValueChange = onLevelChange,
-                                    valueRange = range.first.toFloat()..range.last.toFloat(),
+                                GlowGlassSlider(
+                                    label = label,
+                                    valueText = formatDb(level),
+                                    value = (level - range.first).toFloat() / (range.last - range.first).coerceAtLeast(1),
+                                    onValueChange = { f -> onLevelChange(range.first + f * (range.last - range.first)) },
                                 )
                             }
                         }
