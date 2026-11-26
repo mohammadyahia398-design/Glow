@@ -239,19 +239,20 @@ fun OnlineSearchScreen(
                 val added = store.toggleOnlineFavorite(t)
                 snackbar?.show(if (added) GlowStrings.get(R.string.fav_added) else GlowStrings.get(R.string.fav_removed))
                 menuFor = null
-            })
+            }, icon = CoreGlyphs.Heart)
             if (t.downloadUrl != null) {
                 GlowDialogRow(GlowStrings.get(R.string.download), {
                     val ok = TrackDownloader.start(context, t)
                     snackbar?.show(if (ok) GlowStrings.get(R.string.download_started) else GlowStrings.get(R.string.download_failed))
                     menuFor = null
-                })
+                }, icon = CoreGlyphs.Down)
             } else {
                 Text(
                     GlowStrings.get(R.string.download_unavailable),
                     color = skin.textSecondary,
                     fontSize = 13.sp,
-                    modifier = Modifier.padding(vertical = 8.dp),
+                    lineHeight = 18.sp,
+                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 8.dp),
                 )
             }
         }

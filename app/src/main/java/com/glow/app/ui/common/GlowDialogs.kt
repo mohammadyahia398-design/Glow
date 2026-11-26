@@ -51,6 +51,8 @@ import com.glow.app.ui.theme.LocalGlowSkin
 import com.glow.app.ui.theme.accentBrush
 import com.glow.app.GlowStrings
 import com.glow.app.R
+import com.glow.app.ui.icons.GlowGlyph
+import com.glow.app.ui.icons.Glyph
 
 /** خلفية النافذة الزجاجية التي تنكسر خلف أزرارها وصفوفها (أندرويد 13+)، وnull حيث لا انكسار. */
 val LocalDialogBackdrop = compositionLocalOf<Backdrop?> { null }
@@ -160,7 +162,7 @@ fun GlowDialog(
                     Row(
                         Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 12.dp),
+                            .padding(horizontal = 24.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         content = actions,
@@ -223,7 +225,7 @@ fun RowScope.GlowDialogAction(
 
 /** صف خيار داخل [GlowDialog]: كبسولة زجاجية سائلة، أو كبسولة مسطّحة حيث لا انكسار. [radio] غير null يُظهر زر راديو أمام النص. */
 @Composable
-fun GlowDialogRow(text: String, onClick: () -> Unit, radio: Boolean? = null) {
+fun GlowDialogRow(text: String, onClick: () -> Unit, radio: Boolean? = null, icon: Glyph? = null) {
     val skin = LocalGlowSkin.current
     val backdrop = LocalDialogBackdrop.current
     Box(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
@@ -236,7 +238,11 @@ fun GlowDialogRow(text: String, onClick: () -> Unit, radio: Boolean? = null) {
             ) {
                 if (radio != null) {
                     GlowRadio(radio)
-                    Spacer(Modifier.width(14.dp))
+                    Spacer(Modifier.width(4.dp))
+                }
+                if (icon != null) {
+                    GlowGlyph(icon, tint = skin.text, size = 22.dp)
+                    Spacer(Modifier.width(12.dp))
                 }
                 Text(
                     text,
@@ -262,6 +268,10 @@ fun GlowDialogRow(text: String, onClick: () -> Unit, radio: Boolean? = null) {
                     if (radio != null) {
                         GlowRadio(radio)
                         Spacer(Modifier.width(14.dp))
+                    }
+                    if (icon != null) {
+                        GlowGlyph(icon, tint = skin.text, size = 22.dp)
+                        Spacer(Modifier.width(12.dp))
                     }
                     Text(
                         text,

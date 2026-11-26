@@ -57,6 +57,15 @@ import kotlinx.coroutines.launch
 import java.io.File
 import com.glow.app.GlowStrings
 import com.glow.app.R
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import com.glow.app.liquid.backdrop.backdrops.layerBackdrop
+import com.glow.app.liquid.backdrop.backdrops.rememberLayerBackdrop
+import com.glow.app.liquid.ui.LiquidGlassCard
+import com.glow.app.ui.common.LocalLiquidBackdrop
+import com.glow.app.ui.common.glowLiquid
+import com.glow.app.ui.glass.core.rememberGlassTier
 
 private const val DEFAULT_VOCAL_WORKER =
     "https://glow-vocal-worker.mohammadyahia398.workers.dev"
@@ -101,14 +110,37 @@ fun VocalIsolationScreen(modifier: Modifier = Modifier) {
         }
     }
 
+    val glassTier = rememberGlassTier()
+    val vocalBackdrop = rememberLayerBackdrop()
+    val liquidBackdrop = if (glassTier.supportsRefraction) vocalBackdrop else null
+    CompositionLocalProvider(LocalLiquidBackdrop provides liquidBackdrop) {
+    Box(modifier.fillMaxSize()) {
+    // خلفية هادئة بوهجين؛ هي ما تنكسر خلف البطاقات والأزرار الزجاجية.
+    Box(
+        Modifier
+            .matchParentSize()
+            .layerBackdrop(vocalBackdrop)
+            .drawBehind {
+                drawRect(Brush.verticalGradient(listOf(skin.bgTop, skin.bgBottom, skin.bgTop)))
+                drawRect(
+                    Brush.radialGradient(
+                        listOf(skin.accent.copy(alpha = 0.20f), Color.Transparent),
+                        center = Offset(size.width * 0.9f, size.height * 0.12f),
+                        radius = size.width * 0.9f,
+                    ),
+                )
+                drawRect(
+                    Brush.radialGradient(
+                        listOf(Color(0xFF7226FF).copy(alpha = 0.16f), Color.Transparent),
+                        center = Offset(size.width * 0.05f, size.height * 0.6f),
+                        radius = size.width * 0.9f,
+                    ),
+                )
+            },
+    )
     Column(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    listOf(skin.bgTop, skin.bgBottom, skin.bgTop),
-                ),
-            )
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 20.dp)
             .padding(top = 26.dp, bottom = 150.dp),
@@ -199,9 +231,15 @@ fun VocalIsolationScreen(modifier: Modifier = Modifier) {
                         Modifier
                             .fillMaxWidth()
                             .height(52.dp)
-                            .clip(fieldShape)
-                            .background(skin.chip)
-                            .border(1.dp, if (endpointFocused) skin.accent else skin.divider, fieldShape)
+                            .glowLiquid(
+                                fieldShape,
+                                Brush.verticalGradient(listOf(skin.chip.copy(alpha = 0.95f), skin.chip.copy(alpha = 0.70f))),
+                                skin.isDark,
+                                rimColor = if (endpointFocused) skin.accent else Color.White,
+                                fillAlpha = 0.5f,
+                                interactive = false,
+                            )
+                            .then(if (endpointFocused) Modifier.border(1.5.dp, skin.accent, fieldShape) else Modifier)
                             .padding(horizontal = 20.dp),
                         contentAlignment = Alignment.CenterStart,
                     ) {
@@ -233,18 +271,18 @@ fun VocalIsolationScreen(modifier: Modifier = Modifier) {
                         }
                     },
                     enabled = !busy && healthState != "checking" && endpoint.startsWith("https://"),
-                    modifier = Modifier.weight(1f).height(48.dp),
+                    modifier = Modifier.height(48.dp),
                     contentColor = skin.accentText,
                 ) {
                     if (healthState == "checking") {
                         GlowRingLoader(diameter = 20.dp, strokeWidth = 2.dp, color = skin.accent)
                         Spacer(Modifier.size(8.dp))
                     }
-                    Text(GlowStrings.get(R.string.vi_test_conn))
+                    Text(GlowStrings.get(R.string.vi_test_conn), maxLines = 1, softWrap = false)
                 }
                 Text(
                     healthMessage,
-                    modifier = Modifier.weight(1.25f),
+                    modifier = Modifier.weight(1f),
                     color = when (healthState) {
                         "ok" -> Color(0xFF87F5F5)
                         "error" -> Color(0xFFFF6B8E)
@@ -462,6 +500,8 @@ private fun StudioHero(
             }
         }
     }
+    }
+    }
 }
 
 @Composable
@@ -469,16 +509,40 @@ private fun StudioCard(
     skin: com.glow.app.ui.theme.GlowSkin,
     content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit,
 ) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(25.dp),
-        color = skin.panel,
-    ) {
-        Column(
-            modifier = Modifier.padding(18.dp),
-            verticalArrangement = Arrangement.spacedBy(13.dp),
-            content = content,
-        )
+    val backdrop = LocalLiquidBackdrop.current
+    val shape = RoundedCornerShape(25.dp)
+    if (backdrop != null) {
+        Box(Modifier.fillMaxWidth()) {
+            LiquidGlassCard(
+                backdrop = backdrop,
+                modifier = Modifier.fillMaxWidth(),
+                cornerRadius = 25.dp,
+                surfaceColor = skin.panel.copy(alpha = if (skin.isDark) 0.68f else 0.74f),
+            ) {
+                Column(
+                    modifier = Modifier.padding(18.dp),
+                    verticalArrangement = Arrangement.spacedBy(13.dp),
+                    content = content,
+                )
+            }
+            Box(
+                Modifier
+                    .matchParentSize()
+                    .border(1.dp, skin.glassBorder.copy(alpha = 0.22f), shape),
+            )
+        }
+    } else {
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = shape,
+            color = skin.panel,
+        ) {
+            Column(
+                modifier = Modifier.padding(18.dp),
+                verticalArrangement = Arrangement.spacedBy(13.dp),
+                content = content,
+            )
+        }
     }
 }
 

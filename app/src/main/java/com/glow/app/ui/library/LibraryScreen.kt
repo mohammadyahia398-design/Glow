@@ -74,6 +74,8 @@ import com.glow.app.ui.theme.LocalGlowSkin
 import com.glow.app.GlowStrings
 import com.glow.app.R
 import androidx.annotation.StringRes
+import com.glow.app.ui.common.glowLiquid
+import androidx.compose.ui.graphics.Brush
 
 /** ألبوم أو فنان أو نوع أو قائمة: مجموعة مقاطع بغلاف واحد. */
 data class MediaGroup(
@@ -567,9 +569,14 @@ private fun NameDialog(onCreate: (String) -> Unit, onDismiss: () -> Unit) {
         Box(
             Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(16.dp))
-                .background(skin.chip)
-                .padding(horizontal = 16.dp, vertical = 14.dp),
+                .glowLiquid(
+                    RoundedCornerShape(26.dp),
+                    Brush.verticalGradient(listOf(skin.chip.copy(alpha = 0.95f), skin.chip.copy(alpha = 0.70f))),
+                    skin.isDark,
+                    fillAlpha = 0.5f,
+                    interactive = false,
+                )
+                .padding(horizontal = 20.dp, vertical = 14.dp),
         ) {
             if (name.isEmpty()) Text(GlowStrings.get(R.string.playlist_name), color = skin.textSecondary, fontSize = 15.sp)
             BasicTextField(
@@ -594,8 +601,13 @@ private fun SearchField(value: String, onChange: (String) -> Unit, onClose: () -
             .fillMaxWidth()
             .padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 12.dp)
             .height(52.dp)
-            .clip(RoundedCornerShape(26.dp))
-            .background(skin.chip)
+            .glowLiquid(
+                RoundedCornerShape(26.dp),
+                Brush.verticalGradient(listOf(skin.chip.copy(alpha = 0.95f), skin.chip.copy(alpha = 0.70f))),
+                skin.isDark,
+                fillAlpha = 0.5f,
+                interactive = false,
+            )
             .padding(start = 16.dp, end = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
