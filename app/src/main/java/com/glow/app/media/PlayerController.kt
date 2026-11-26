@@ -15,7 +15,9 @@ import androidx.media3.exoplayer.ExoPlayer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
@@ -52,6 +54,9 @@ class PlayerController(
     private var speed = 1f
     private var volume = 1f
     private var sleepJob: Job? = null
+    private val _playbackErrors = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    /** يصدر عند تعذّر تشغيل مقطع (فيُتخطى). */
+    val playbackErrors: SharedFlow<Unit> = _playbackErrors
     private val _sleepEndsAt = MutableStateFlow<Long?>(null)
 
     /** وقت انتهاء مؤقّت النوم بالمللي ثانية، أو null إن لم يكن مفعّلاً. */
@@ -504,6 +509,7 @@ class PlayerController(
 
     /** خطأ أثناء التحضير أو التشغيل: نتخطى المقطع التالف. */
     private fun handleError() {
+        _playbackErrors.tryEmit(Unit)
         releasePlayer()
         if (advanceAfterFailure()) playCurrent()
     }

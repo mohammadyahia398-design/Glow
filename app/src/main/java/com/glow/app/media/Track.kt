@@ -13,4 +13,5 @@ data class Track(
     val uri: Uri,
     val genre: String = "",
     val dateAddedSec: Long = 0,
+    val artworkUrl: String? = null,
 )

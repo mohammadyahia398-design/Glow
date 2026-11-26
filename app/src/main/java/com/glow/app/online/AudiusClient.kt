@@ -49,6 +49,9 @@ object AudiusClient {
                     durationMs = o.optLong("duration") * 1000L,
                     uri = Uri.parse("$BASE/tracks/$id/stream?app_name=$APP"),
                     genre = o.optString("genre"),
+                    artworkUrl = o.optJSONObject("artwork")
+                        ?.let { a -> a.optString("480x480").ifBlank { a.optString("150x150") } }
+                        ?.ifBlank { null },
                 ),
             )
         }

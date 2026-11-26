@@ -190,6 +190,9 @@ fun GlowApp(settings: SettingsStore, modifier: Modifier = Modifier) {
     val useLiquidBar = tier.supportsRefraction
     val current = playerState.current
     LaunchedEffect(current?.id) { current?.let { library.recordPlay(it.id) } }
+    LaunchedEffect(controller) {
+        controller?.playbackErrors?.collect { snackbar.show("تعذّر تشغيل الأغنية، تم تخطيها") }
+    }
 
     ProvideGlassConfig(glassConfig) {
       CompositionLocalProvider(LocalGlowSnackbar provides snackbar) {

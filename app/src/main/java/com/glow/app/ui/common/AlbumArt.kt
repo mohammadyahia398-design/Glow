@@ -8,6 +8,8 @@ import android.net.Uri
 import android.os.Build
 import android.util.LruCache
 import android.util.Size
+import java.net.HttpURLConnection
+import java.net.URL
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -33,11 +35,21 @@ private val cache = LruCache<String, Bitmap>(48)
 private val missing: MutableSet<String> = java.util.Collections.synchronizedSet(HashSet())
 
 private fun loadArt(context: Context, track: Track, px: Int): Bitmap? {
-    val key = "${track.albumId}:$px"
+    val remote = track.artworkUrl
+    val key = "${remote ?: track.albumId}:$px"
     cache.get(key)?.let { return it }
     if (key in missing) return null
     val bmp = runCatching {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        if (remote != null) {
+            val conn = URL(remote).openConnection() as HttpURLConnection
+            try {
+                conn.connectTimeout = 8_000
+                conn.readTimeout = 10_000
+                conn.inputStream.use { BitmapFactory.decodeStream(it) }
+            } finally {
+                conn.disconnect()
+            }
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             context.contentResolver.loadThumbnail(track.uri, Size(px, px), null)
         } else {
             val art = ContentUris.withAppendedId(
@@ -55,7 +67,7 @@ private fun loadArt(context: Context, track: Track, px: Int): Bitmap? {
 @Composable
 fun rememberArt(track: Track?, px: Int): Bitmap? {
     val context = LocalContext.current.applicationContext
-    val state = produceState<Bitmap?>(null, track?.albumId, px) {
+    val state = produceState<Bitmap?>(null, track?.artworkUrl ?: track?.albumId, px) {
         value = if (track == null) null else withContext(Dispatchers.IO) { loadArt(context, track, px) }
     }
     return state.value
