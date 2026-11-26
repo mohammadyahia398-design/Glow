@@ -442,6 +442,8 @@ fun VocalIsolationScreen(modifier: Modifier = Modifier) {
             modifier = Modifier.padding(horizontal = 4.dp),
         )
     }
+    }
+    }
 }
 
 @Composable
@@ -499,8 +501,6 @@ private fun StudioHero(
                 )
             }
         }
-    }
-    }
     }
 }
 
