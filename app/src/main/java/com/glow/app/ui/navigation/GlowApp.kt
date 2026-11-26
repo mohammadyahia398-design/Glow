@@ -271,6 +271,7 @@ fun GlowApp(settings: SettingsStore, modifier: Modifier = Modifier) {
                         loaded = loaded,
                         hasAudioAccess = hasAudioAccess,
                         currentId = current?.id,
+                        isPlaying = playerState.isPlaying,
                         store = library,
                         barTab = libraryTab,
                         onRequestPermission = { launcher.launch(permissions) },

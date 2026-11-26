@@ -126,6 +126,7 @@ fun LibraryScreen(
     currentId: Long?,
     store: LibraryStore,
     barTab: LibraryTab,
+    isPlaying: Boolean = false,
     onRequestPermission: () -> Unit,
     onPlay: (List<Track>, Int) -> Unit,
     onQueueTrack: (Track, Boolean) -> Unit,
@@ -260,7 +261,7 @@ fun LibraryScreen(
                     actionLabel = "مسح البحث",
                     onAction = { query = "" },
                 )
-                tab == LibraryTab.Tracks -> TrackList(sorted, currentId, pad, onPlay) { actionTrack = it }
+                tab == LibraryTab.Tracks -> TrackList(sorted, currentId, isPlaying, pad, onPlay) { actionTrack = it }
                 tab == LibraryTab.Favorites -> if (favorites.isEmpty()) {
                     GlowEmptyState(
                         title = "لا مفضلات بعد",
@@ -268,7 +269,7 @@ fun LibraryScreen(
                         icon = IconKind.Heart,
                     )
                 } else {
-                    TrackList(favorites, currentId, pad, onPlay) { actionTrack = it }
+                    TrackList(favorites, currentId, isPlaying, pad, onPlay) { actionTrack = it }
                 }
                 tab == LibraryTab.Genres -> if (genres.isEmpty()) {
                     GlowEmptyState(
@@ -388,6 +389,7 @@ fun LibraryScreen(
 private fun TrackList(
     list: List<Track>,
     currentId: Long?,
+    isPlaying: Boolean,
     pad: PaddingValues,
     onPlay: (List<Track>, Int) -> Unit,
     onLongPress: (Track) -> Unit,
@@ -400,6 +402,7 @@ private fun TrackList(
                 subtitle = t.artist.takeIf { it != UNKNOWN_ARTIST } ?: t.addedLabel,
                 trailing = formatTime(t.durationMs),
                 highlight = t.id == currentId,
+                playing = isPlaying,
                 onClick = { onPlay(list, i) },
                 onLongClick = { onLongPress(t) },
             )
