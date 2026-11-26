@@ -57,6 +57,7 @@ import com.glow.app.ui.common.GlowLoading
 import com.glow.app.ui.common.GlowTextButton
 import com.glow.app.ui.common.LocalGlowSnackbar
 import com.glow.app.ui.common.GlowDialogAction
+import com.glow.app.ui.common.GlowChip
 import com.glow.app.ui.common.GlowDialogRow
 import com.glow.app.ui.common.GlowEmptyState
 import com.glow.app.ui.common.GlowIcon
@@ -124,12 +125,13 @@ fun LibraryScreen(
     hasAudioAccess: Boolean,
     currentId: Long?,
     store: LibraryStore,
-    tab: LibraryTab,
+    barTab: LibraryTab,
     onRequestPermission: () -> Unit,
     onPlay: (List<Track>, Int) -> Unit,
     onQueueTrack: (Track, Boolean) -> Unit,
     onOpen: (MediaGroup) -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenVocalIsolation: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val skin = LocalGlowSkin.current
@@ -141,6 +143,9 @@ fun LibraryScreen(
     var sort by rememberSaveable { mutableStateOf(LibrarySort.Title) }
     var sortOpen by remember { mutableStateOf(false) }
     val snackbar = LocalGlowSnackbar.current
+    var showGenres by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(barTab) { showGenres = false }
+    val tab = if (showGenres) LibraryTab.Genres else barTab
 
     val byId = remember(tracks) { tracks.associateBy { it.id } }
     val shown = remember(tracks, query) {
@@ -190,6 +195,16 @@ fun LibraryScreen(
             },
         )
         if (searching) SearchField(query, { query = it }) { searching = false; query = "" }
+        if (hasAudioAccess) {
+            LazyRow(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                contentPadding = PaddingValues(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                item { GlowChip("الأنواع", tab == LibraryTab.Genres, { showGenres = !showGenres }) }
+                item { GlowChip("عزل الصوت", false, onOpenVocalIsolation) }
+            }
+        }
         if (loaded && hasAudioAccess && tracks.isNotEmpty() &&
             (tab == LibraryTab.Tracks || tab == LibraryTab.Favorites)
         ) {

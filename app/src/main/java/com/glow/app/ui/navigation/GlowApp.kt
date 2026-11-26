@@ -223,7 +223,7 @@ fun GlowApp(settings: SettingsStore, modifier: Modifier = Modifier) {
                         hasAudioAccess = hasAudioAccess,
                         currentId = current?.id,
                         store = library,
-                        tab = libraryTab,
+                        barTab = libraryTab,
                         onRequestPermission = { launcher.launch(permissions) },
                         onPlay = { list, i -> connection.play(list, i) },
                         onQueueTrack = { track, playNext ->
@@ -250,6 +250,7 @@ fun GlowApp(settings: SettingsStore, modifier: Modifier = Modifier) {
                         },
                         onOpen = { collection = it },
                         onOpenSettings = { showSettings = true },
+                        onOpenVocalIsolation = { showVocal = true },
                     )
                 } else {
                     CollectionScreen(
