@@ -35,6 +35,8 @@ import com.glow.app.ui.glass.components.GlassSwitch
 import com.glow.app.ui.glass.core.rememberGlassTier
 import com.glow.app.ui.theme.LocalGlowSkin
 import kotlin.math.roundToInt
+import com.glow.app.GlowStrings
+import com.glow.app.R
 
 /** لوحة معادل صوتي حيّة مرتبطة بجلسة المشغّل الحالية. */
 @Composable
@@ -65,13 +67,13 @@ fun EqualizerSheet(
         val sliderBackdrop = LocalDialogBackdrop.current ?: eqBackdrop
         Column(Modifier.fillMaxWidth().padding(horizontal = 22.dp).padding(bottom = 28.dp)) {
             Text(
-                "المعادل الصوتي",
+                GlowStrings.get(R.string.eq_title),
                 color = skin.text,
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
             )
             Text(
-                "تحكم مباشر في ترددات الصوت للمقطع الحالي",
+                GlowStrings.get(R.string.eq_subtitle),
                 color = skin.textSecondary,
                 fontSize = 13.sp,
                 modifier = Modifier.padding(top = 4.dp, bottom = 18.dp),
@@ -80,9 +82,9 @@ fun EqualizerSheet(
             if (!engine.available || bandCount == 0) {
                 Text(
                     if (audioSessionId <= 0) {
-                        "ابدأ تشغيل مقطع موسيقي أولاً لتفعيل المعادل."
+                        GlowStrings.get(R.string.eq_start_first)
                     } else {
-                        "لا يوفر هذا الجهاز معادلاً صوتياً متاحاً لجلسة التشغيل الحالية."
+                        GlowStrings.get(R.string.eq_unavailable)
                     },
                     color = skin.textSecondary,
                     fontSize = 15.sp,
@@ -95,8 +97,8 @@ fun EqualizerSheet(
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
                     Column(Modifier.weight(1f)) {
-                        Text("تفعيل المعادل", color = skin.text, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-                        Text("يطبّق التأثير على جلسة الصوت الحالية", color = skin.textSecondary, fontSize = 12.sp)
+                        Text(GlowStrings.get(R.string.eq_enable), color = skin.text, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                        Text(GlowStrings.get(R.string.eq_enable_sub), color = skin.textSecondary, fontSize = 12.sp)
                     }
                     if (glassTier.supportsRefraction) {
                         LiquidToggle(
@@ -117,7 +119,7 @@ fun EqualizerSheet(
                     }
                 }
 
-                Text("الإعدادات المسبقة", color = skin.text, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+                Text(GlowStrings.get(R.string.eq_presets), color = skin.text, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
                 LazyRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 18.dp),
@@ -137,14 +139,14 @@ fun EqualizerSheet(
                     }
                 }
 
-                Text("النطاقات الترددية", color = skin.text, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+                Text(GlowStrings.get(R.string.eq_bands), color = skin.text, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
                 LazyColumn(
                     modifier = Modifier.fillMaxWidth().heightIn(max = 360.dp).padding(top = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     itemsIndexed(levels) { index, level ->
                         val frequency = engine.centerFrequencyHz(index)
-                        val label = frequency?.let(::frequencyLabel) ?: "النطاق ${index + 1}"
+                        val label = frequency?.let(::frequencyLabel) ?: GlowStrings.get(R.string.eq_band, index + 1)
                         Column(Modifier.fillMaxWidth().padding(vertical = 3.dp)) {
                             if (glassTier.supportsRefraction) Row(
                                 Modifier.fillMaxWidth(),
@@ -200,7 +202,7 @@ fun EqualizerSheet(
                             selectedPreset = 0
                         }
                     }) {
-                        Text("إعادة ضبط", color = skin.accentText)
+                        Text(GlowStrings.get(R.string.eq_reset), color = skin.accentText)
                     }
                 }
             }

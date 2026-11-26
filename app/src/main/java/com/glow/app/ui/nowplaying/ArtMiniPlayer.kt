@@ -53,6 +53,8 @@ import com.glow.app.ui.common.IconKind
 import com.glow.app.ui.glass.core.rememberGlassTier
 import com.glow.app.ui.theme.LocalGlowSkin
 import com.glow.app.ui.theme.accentBrush
+import com.glow.app.GlowStrings
+import com.glow.app.R
 
 /** ارتفاع المشغّل المصغّر؛ يعتمد عليه `GlowApp` لحساب طبقة التلاشي السفلية. */
 val ArtMiniPlayerHeight = 92.dp
@@ -143,11 +145,11 @@ fun ArtMiniPlayer(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            GlowIconTap("السابق", onPrevious, size = 44.dp) {
+            GlowIconTap(GlowStrings.get(R.string.previous), onPrevious, size = 44.dp) {
                 GlowIcon(IconKind.Prev, skin.text.copy(alpha = 0.9f), 22.dp)
             }
             // زر التشغيل: نفس تدرّج وحافة GlowFilledButton، بلا ألوان إضافية.
-            GlowIconTap(if (isPlaying) "إيقاف مؤقت" else "تشغيل", onTogglePlay, size = 44.dp) {
+            GlowIconTap(if (isPlaying) GlowStrings.get(R.string.pause) else GlowStrings.get(R.string.play), onTogglePlay, size = 44.dp) {
                 Box(
                     Modifier
                         .size(40.dp)
@@ -159,7 +161,7 @@ fun ArtMiniPlayer(
                     GlowIcon(if (isPlaying) IconKind.Pause else IconKind.Play, skin.onAccent, 22.dp)
                 }
             }
-            GlowIconTap("التالي", onNext, size = 44.dp) {
+            GlowIconTap(GlowStrings.get(R.string.next), onNext, size = 44.dp) {
                 GlowIcon(IconKind.Next, skin.text.copy(alpha = 0.9f), 22.dp)
             }
         }

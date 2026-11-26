@@ -6,6 +6,9 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
 import com.glow.app.settings.BgChoice
+import com.glow.app.GlowStrings
+import com.glow.app.R
+import androidx.annotation.StringRes
 
 /**
  * لوحة ألوان قابلة للاختيار.
@@ -17,58 +20,61 @@ import com.glow.app.settings.BgChoice
 @Immutable
 data class Colorway(
     val id: String,
-    val name: String,
+    @StringRes val nameRes: Int,
     val blobs: List<Color>,
     val accent: Color,
     val bg: Color,
-)
+) {
+    /** الاسم المعروض بلغة الجهاز الحالية. */
+    val name: String get() = GlowStrings.get(nameRes)
+}
 
 object Colorways {
     val Glow = Colorway(
         id = "glow",
-        name = "وهج",
+        nameRes = R.string.cw_glow,
         blobs = listOf(Color(0xFFF042FF), Color(0xFF7226FF), Color(0xFF87F5F5), Color(0xFF160078)),
         accent = Color(0xFFF042FF),
         bg = GlowPalette.Void,
     )
     val Dusk = Colorway(
         id = "dusk",
-        name = "شفق",
+        nameRes = R.string.cw_dusk,
         blobs = listOf(Color(0xFFFF5A57), Color(0xFFE02F75), Color(0xFF6700A3), Color(0xFF1B2062)),
         accent = Color(0xFFFF5A57),
         bg = Color(0xFF050C38),
     )
     val Neon = Colorway(
         id = "neon",
-        name = "نيون",
+        nameRes = R.string.cw_neon,
         blobs = listOf(Color(0xFFF042FF), Color(0xFF7226FF), Color(0xFF87F5F5), Color(0xFF160078)),
         accent = Color(0xFFF042FF),
         bg = Color(0xFF010030),
     )
     val Amber = Colorway(
         id = "amber",
-        name = "عنبر",
+        nameRes = R.string.cw_amber,
         blobs = listOf(Color(0xFFF09410), Color(0xFFBC430D), Color(0xFFF0D0C7), Color(0xFF241705)),
         accent = Color(0xFFF09410),
         bg = Color(0xFF1A0F05),
     )
     val Emerald = Colorway(
         id = "emerald",
-        name = "زمرّد",
+        nameRes = R.string.cw_emerald,
         blobs = listOf(Color(0xFF36DFBD), Color(0xFF4FE566), Color(0xFF39887F), Color(0xFF354C4A)),
         accent = Color(0xFF36DFBD),
         bg = Color(0xFF0C1B1A),
     )
     val Ruby = Colorway(
         id = "ruby",
-        name = "ياقوت",
+        nameRes = R.string.cw_sapphire,
         blobs = listOf(Color(0xFFF10222), Color(0xFF892325), Color(0xFFFFCAD0), Color(0xFF250202)),
         accent = Color(0xFFF10222),
         bg = Color(0xFF1A0101),
     )
     val Rose = Colorway(
         id = "rose",
-        name = "ورد",
+        nameRes = R.string.cw_rose,
         blobs = listOf(Color(0xFFFF94B2), Color(0xFFF24455), Color(0xFFE5203A), Color(0xFF660F24)),
         accent = Color(0xFFF24455),
         bg = Color(0xFF2B0013),
@@ -84,7 +90,7 @@ object Colorways {
     /** لوحة مخصّصة: ألوانها الأربعة مشتقة من لون التمييز بتدوير الصبغة. */
     fun custom(accent: Color, bg: Color): Colorway = Colorway(
         id = CUSTOM_ID,
-        name = "مخصّص",
+        nameRes = R.string.cw_custom,
         blobs = listOf(
             accent,
             hueShift(accent, 38f, 0.95f, 1.00f),

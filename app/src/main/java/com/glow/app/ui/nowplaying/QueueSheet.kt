@@ -53,6 +53,8 @@ import com.glow.app.ui.common.GlowRoundButton
 import com.glow.app.ui.common.GlowTextButton
 import com.glow.app.ui.icons.CoreGlyphs
 import com.glow.app.ui.theme.LocalGlowSkin
+import com.glow.app.GlowStrings
+import com.glow.app.R
 
 private val QueueRowHeight = 64.dp
 private val QueueRowGap = 4.dp
@@ -115,28 +117,28 @@ fun QueueSheet(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(Modifier.weight(1f)) {
-                    Text("قائمة التشغيل", color = skin.text, fontSize = 23.sp, fontWeight = FontWeight.Bold)
+                    Text(GlowStrings.get(R.string.queue_title), color = skin.text, fontSize = 23.sp, fontWeight = FontWeight.Bold)
                     Text(
-                        "${state.queue.size} مقطع · ${state.upcomingCount} قادم",
+                        GlowStrings.get(R.string.queue_summary, state.queue.size, state.upcomingCount),
                         color = skin.textSecondary,
                         fontSize = 13.sp,
                     )
                     Text(
-                        "اسحب المقبض (أو اضغط مطولاً على المقطع) لتغيير ترتيبه",
+                        GlowStrings.get(R.string.queue_drag_hint),
                         color = skin.textSecondary.copy(alpha = 0.8f),
                         fontSize = 11.5.sp,
                     )
                 }
                 if (state.upcomingCount > 0) {
                     GlowTextButton(onClick = onClearUpcoming) {
-                        Text("مسح القادم", color = skin.accentText)
+                        Text(GlowStrings.get(R.string.clear_upcoming), color = skin.accentText)
                     }
                 }
             }
 
             if (state.queue.isEmpty()) {
                 Text(
-                    "قائمة التشغيل فارغة حالياً.",
+                    GlowStrings.get(R.string.queue_empty),
                     color = skin.textSecondary,
                     modifier = Modifier.padding(vertical = 36.dp, horizontal = 8.dp),
                 )
@@ -206,7 +208,7 @@ private fun DragHandle(color: androidx.compose.ui.graphics.Color, modifier: Modi
     Box(
         modifier
             .size(width = 30.dp, height = QueueRowHeight)
-            .semantics { contentDescription = "اسحب لتغيير الترتيب" },
+            .semantics { contentDescription = GlowStrings.get(R.string.drag_to_reorder) },
         contentAlignment = Alignment.Center,
     ) {
         Canvas(Modifier.size(width = 12.dp, height = 18.dp)) {
@@ -258,7 +260,7 @@ private fun QueueTrackRow(
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                if (current) "يُشغّل الآن" else track.artist,
+                if (current) GlowStrings.get(R.string.now_playing) else track.artist,
                 color = skin.textSecondary,
                 fontSize = 12.5.sp,
                 maxLines = 1,
@@ -267,7 +269,7 @@ private fun QueueTrackRow(
         }
         DragHandle(skin.textSecondary, handleModifier)
         GlowRoundButton(
-            CoreGlyphs.Close, "إزالة من القائمة", onRemove,
+            CoreGlyphs.Close, GlowStrings.get(R.string.remove_from_queue), onRemove,
             size = 34.dp, tint = skin.textSecondary,
         )
     }

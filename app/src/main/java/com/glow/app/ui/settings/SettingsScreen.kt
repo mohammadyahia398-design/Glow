@@ -75,6 +75,8 @@ import com.glow.app.ui.glass.components.GlassSwitch
 import com.glow.app.ui.glass.core.rememberGlassTier
 import com.glow.app.ui.theme.LocalGlowSkin
 import kotlinx.coroutines.delay
+import com.glow.app.GlowStrings
+import com.glow.app.R
 
 private enum class Dlg { SPEED, SLEEP, SHORT, EQUALIZER }
 
@@ -159,21 +161,21 @@ fun SettingsScreen(
                     }
 
                     Group {
-                        Item(IconKind.Speed, "سرعة التشغيل", speedLabel(store.playbackSpeed)) { dlg = Dlg.SPEED }
+                        Item(IconKind.Speed, GlowStrings.get(R.string.playback_speed), speedLabel(store.playbackSpeed)) { dlg = Dlg.SPEED }
                         Divider()
                         Item(
                             IconKind.Moon,
-                            "مؤقّت النوم",
-                            if (remainingMin == null) "متوقف" else "متبقٍ $remainingMin د",
+                            GlowStrings.get(R.string.sleep_timer),
+                            if (remainingMin == null) GlowStrings.get(R.string.sleep_status_off) else GlowStrings.get(R.string.sleep_remaining, remainingMin),
                         ) { dlg = Dlg.SLEEP }
                         Divider()
-                        Item(IconKind.Equalizer, "المعادل الصوتي", null) { dlg = Dlg.EQUALIZER }
+                        Item(IconKind.Equalizer, GlowStrings.get(R.string.eq_title), null) { dlg = Dlg.EQUALIZER }
                     }
 
                     Group {
                         Item(
                             icon = IconKind.Timer,
-                            title = "تخطي الأغاني القصيرة",
+                            title = GlowStrings.get(R.string.skip_short_title),
                             value = null,
                             chevron = false,
                             onClick = { store.updateSkipShortSongs(!store.skipShortSongs) },
@@ -200,21 +202,21 @@ fun SettingsScreen(
                         )
                         if (store.skipShortSongs) {
                             Divider()
-                            Item(IconKind.Timer, "الحد الأدنى للمدة", "${store.skipShortSeconds} ثانية") { dlg = Dlg.SHORT }
+                            Item(IconKind.Timer, GlowStrings.get(R.string.min_duration), GlowStrings.get(R.string.seconds_fmt, store.skipShortSeconds)) { dlg = Dlg.SHORT }
                         }
                     }
 
                     Group {
-                        Item(IconKind.Note, "عزل الصوت", "فصل المغني", onClick = onOpenVocalIsolation)
+                        Item(IconKind.Note, GlowStrings.get(R.string.vocal_isolation), GlowStrings.get(R.string.separate_vocals), onClick = onOpenVocalIsolation)
                     }
 
                     Spacer(Modifier.height(4.dp))
                     GlowFilledButton(onClick = onRescan, modifier = Modifier.fillMaxWidth()) {
                         GlowIcon(IconKind.Refresh, skin.onAccent, 20.dp)
-                        Text("إعادة فحص المكتبة")
+                        Text(GlowStrings.get(R.string.rescan))
                     }
                     Text(
-                        "Glow · الإصدار $version",
+                        GlowStrings.get(R.string.settings_version, version),
                         color = skin.textSecondary,
                         fontSize = 12.5.sp,
                         modifier = Modifier.align(Alignment.CenterHorizontally).padding(top = 4.dp),
@@ -226,25 +228,25 @@ fun SettingsScreen(
 
     when (dlg) {
         Dlg.SPEED -> GlowChoiceDialog(
-            "سرعة التشغيل",
+            GlowStrings.get(R.string.playback_speed),
             listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 2f).map { it to speedLabel(it) },
             store.playbackSpeed,
             { store.updatePlaybackSpeed(it) },
         ) { dlg = null }
 
         Dlg.SLEEP -> GlowChoiceDialog(
-            "مؤقّت النوم",
+            GlowStrings.get(R.string.sleep_timer),
             listOf(
-                0 to "إيقاف", 15 to "15 دقيقة", 30 to "30 دقيقة",
-                45 to "45 دقيقة", 60 to "ساعة", 90 to "ساعة ونصف",
+                0 to GlowStrings.get(R.string.sleep_option_off), 15 to GlowStrings.get(R.string.minutes_fmt, 15), 30 to GlowStrings.get(R.string.minutes_fmt, 30),
+                45 to GlowStrings.get(R.string.minutes_fmt, 45), 60 to GlowStrings.get(R.string.hour_one), 90 to GlowStrings.get(R.string.hour_half),
             ),
             if (sleepEndsAt == null) 0 else -1,
             { onSleepTimer(it) },
         ) { dlg = null }
 
         Dlg.SHORT -> GlowChoiceDialog(
-            "الحد الأدنى للمدة",
-            listOf(15, 30, 45, 60).map { it to "$it ثانية" },
+            GlowStrings.get(R.string.min_duration),
+            listOf(15, 30, 45, 60).map { it to GlowStrings.get(R.string.seconds_fmt, it) },
             store.skipShortSeconds,
             { store.updateSkipShortSeconds(it) },
         ) { dlg = null }
@@ -258,7 +260,7 @@ fun SettingsScreen(
     }
 }
 
-private fun speedLabel(s: Float) = if (s == 1f) "عادية" else "×$s"
+private fun speedLabel(s: Float) = if (s == 1f) GlowStrings.get(R.string.speed_normal) else "×$s"
 
 /** شريط علوي: زر رجوع دائري عند الطرف وعنوان في الوسط تماماً. */
 @Composable
@@ -272,11 +274,11 @@ private fun SettingsTopBar(onBack: () -> Unit) {
             .padding(horizontal = 16.dp),
         contentAlignment = Alignment.Center,
     ) {
-        GlowIconTap("رجوع", onBack, Modifier.align(Alignment.CenterStart), size = 44.dp, background = skin.chip) {
+        GlowIconTap(GlowStrings.get(R.string.back), onBack, Modifier.align(Alignment.CenterStart), size = 44.dp, background = skin.chip) {
             GlowIcon(IconKind.Back, skin.text, 22.dp)
         }
         Text(
-            "الإعدادات",
+            GlowStrings.get(R.string.settings),
             color = skin.text,
             fontSize = 18.sp,
             fontWeight = FontWeight.SemiBold,
@@ -377,16 +379,16 @@ private fun ThemeRow(selected: ThemeMode, onSelect: (ThemeMode) -> Unit) {
     val skin = LocalGlowSkin.current
     val backdrop = LocalLiquidBackdrop.current
     val options = listOf(
-        ThemeMode.AUTO to "النظام",
-        ThemeMode.LIGHT to "فاتح",
-        ThemeMode.DARK to "داكن",
+        ThemeMode.AUTO to GlowStrings.get(R.string.theme_system),
+        ThemeMode.LIGHT to GlowStrings.get(R.string.theme_light),
+        ThemeMode.DARK to GlowStrings.get(R.string.theme_dark),
     )
     val index = options.indexOfFirst { it.first == selected }.coerceAtLeast(0)
     val pill = RoundedCornerShape(50)
     val accent = skin.accentBrush()
     Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp)) {
         Text(
-            "المظهر",
+            GlowStrings.get(R.string.appearance),
             color = skin.text,
             fontSize = 16.sp,
             fontWeight = FontWeight.Medium,

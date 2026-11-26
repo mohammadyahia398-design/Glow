@@ -55,6 +55,8 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import java.io.File
+import com.glow.app.GlowStrings
+import com.glow.app.R
 
 private const val DEFAULT_VOCAL_WORKER =
     "https://glow-vocal-worker.mohammadyahia398.workers.dev"
@@ -69,10 +71,10 @@ fun VocalIsolationScreen(modifier: Modifier = Modifier) {
     }
     var selectedUri by remember { mutableStateOf<Uri?>(null) }
     var selectedName by remember { mutableStateOf("") }
-    var status by remember { mutableStateOf("اختر أغنية، ثم افحص اتصال الخادم وابدأ العزل.") }
+    var status by remember { mutableStateOf(GlowStrings.get(R.string.vi_status_pick)) }
     var phase by remember { mutableStateOf("idle") }
     var healthState by remember { mutableStateOf("idle") }
-    var healthMessage by remember { mutableStateOf("لم يتم فحص الاتصال بعد") }
+    var healthMessage by remember { mutableStateOf(GlowStrings.get(R.string.vi_health_unchecked)) }
     var resultFile by remember { mutableStateOf<File?>(null) }
     var predictionId by remember { mutableStateOf("") }
     var work by remember { mutableStateOf<Job?>(null) }
@@ -95,7 +97,7 @@ fun VocalIsolationScreen(modifier: Modifier = Modifier) {
             resultFile = null
             predictionId = ""
             phase = "selected"
-            status = "الأغنية جاهزة. افحص الاتصال ثم ابدأ العزل."
+            status = GlowStrings.get(R.string.vi_ready)
         }
     }
 
@@ -128,7 +130,7 @@ fun VocalIsolationScreen(modifier: Modifier = Modifier) {
                 fontWeight = FontWeight.ExtraBold,
             )
             Text(
-                "استخرج صوت المغني من الأغنية واترك الآلات والإيقاعات خلفه.",
+                GlowStrings.get(R.string.vi_desc),
                 color = skin.textSecondary,
                 fontSize = 14.sp,
                 lineHeight = 22.sp,
@@ -142,9 +144,9 @@ fun VocalIsolationScreen(modifier: Modifier = Modifier) {
         )
 
         StudioCard(skin = skin) {
-            SectionHeading("مصدر الصوت", "01", skin)
+            SectionHeading(GlowStrings.get(R.string.vi_sec_source), "01", skin)
             Text(
-                if (selectedName.isBlank()) "لم تختر ملفاً صوتياً بعد" else selectedName,
+                if (selectedName.isBlank()) GlowStrings.get(R.string.vi_no_file) else selectedName,
                 color = if (selectedName.isBlank()) skin.textSecondary else skin.text,
                 fontSize = 15.sp,
                 lineHeight = 22.sp,
@@ -158,11 +160,11 @@ fun VocalIsolationScreen(modifier: Modifier = Modifier) {
                 modifier = Modifier.fillMaxWidth().height(52.dp),
                 contentColor = skin.accentText,
             ) {
-                Text(if (selectedUri == null) "اختيار أغنية من الجهاز" else "تغيير الأغنية")
+                Text(if (selectedUri == null) GlowStrings.get(R.string.vi_pick_song) else GlowStrings.get(R.string.vi_change_song))
             }
             if (selectedUri != null) {
                 Text(
-                    "الملف الأصلي لن يتم تعديله.",
+                    GlowStrings.get(R.string.vi_original_safe),
                     color = skin.textSecondary,
                     fontSize = 12.sp,
                 )
@@ -170,9 +172,9 @@ fun VocalIsolationScreen(modifier: Modifier = Modifier) {
         }
 
         StudioCard(skin = skin) {
-            SectionHeading("اتصال خادم المعالجة", "02", skin)
+            SectionHeading(GlowStrings.get(R.string.vi_sec_conn), "02", skin)
             Text(
-                "يُستخدم هذا العنوان للاتصال بخادم Glow. لا تضع مفتاح Replicate هنا.",
+                GlowStrings.get(R.string.vi_conn_hint),
                 color = skin.textSecondary,
                 fontSize = 13.sp,
                 lineHeight = 20.sp,
@@ -185,7 +187,7 @@ fun VocalIsolationScreen(modifier: Modifier = Modifier) {
                     endpoint = it
                     prefs.edit().putString("endpoint", it).apply()
                     healthState = "idle"
-                    healthMessage = "تغيّر العنوان؛ افحص الاتصال مجدداً."
+                    healthMessage = GlowStrings.get(R.string.vi_addr_changed)
                 },
                 enabled = !busy,
                 singleLine = true,
@@ -219,14 +221,14 @@ fun VocalIsolationScreen(modifier: Modifier = Modifier) {
                     onClick = {
                         scope.launch {
                             healthState = "checking"
-                            healthMessage = "جارٍ فحص الخادم…"
+                            healthMessage = GlowStrings.get(R.string.vi_checking)
                             try {
                                 client.checkHealth(endpoint)
                                 healthState = "ok"
-                                healthMessage = "الخادم متصل ويستجيب."
+                                healthMessage = GlowStrings.get(R.string.vi_connected)
                             } catch (error: Exception) {
                                 healthState = "error"
-                                healthMessage = error.message ?: "تعذّر الاتصال بالخادم."
+                                healthMessage = error.message ?: GlowStrings.get(R.string.vi_conn_fail)
                             }
                         }
                     },
@@ -238,7 +240,7 @@ fun VocalIsolationScreen(modifier: Modifier = Modifier) {
                         GlowRingLoader(diameter = 20.dp, strokeWidth = 2.dp, color = skin.accent)
                         Spacer(Modifier.size(8.dp))
                     }
-                    Text("اختبار الاتصال")
+                    Text(GlowStrings.get(R.string.vi_test_conn))
                 }
                 Text(
                     healthMessage,
@@ -255,9 +257,9 @@ fun VocalIsolationScreen(modifier: Modifier = Modifier) {
         }
 
         StudioCard(skin = skin) {
-            SectionHeading("عملية العزل", "03", skin)
+            SectionHeading(GlowStrings.get(R.string.vi_sec_process), "03", skin)
             Text(
-                "يُرسل الملف إلى Demucs عبر خادم Glow. قد تستغرق المعالجة عدة دقائق حسب طول الأغنية والضغط على الخدمة.",
+                GlowStrings.get(R.string.vi_process_hint),
                 color = skin.textSecondary,
                 fontSize = 13.sp,
                 lineHeight = 21.sp,
@@ -267,33 +269,33 @@ fun VocalIsolationScreen(modifier: Modifier = Modifier) {
                     val uri = selectedUri ?: return@GlowFilledButton
                     if (!endpoint.startsWith("https://")) {
                         phase = "error"
-                        status = "أدخل عنوان خادم صحيحاً يبدأ بـ https://"
+                        status = GlowStrings.get(R.string.vi_bad_url)
                         return@GlowFilledButton
                     }
                     work = scope.launch {
                         phase = "uploading"
                         predictionId = ""
                         resultFile = null
-                        status = "جارٍ رفع الأغنية إلى خادم Glow…"
+                        status = GlowStrings.get(R.string.vi_uploading_glow)
                         try {
                             val job = client.separate(endpoint, uri, selectedName)
                             predictionId = job.id
                             phase = "processing"
-                            status = "بدأ الفصل. يجري الآن استخراج صوت المغني…"
+                            status = GlowStrings.get(R.string.vi_started)
                             val file = client.awaitResult(endpoint, job.id) { state ->
                                 status = when (state.lowercase()) {
-                                    "starting" -> "الخدمة تجهّز مهمة الفصل…"
-                                    "processing" -> "Demucs يعالج الأغنية…"
-                                    "succeeded" -> "اكتمل الفصل، جارٍ استلام الملف…"
-                                    else -> "حالة المعالجة: $state"
+                                    "starting" -> GlowStrings.get(R.string.vi_st_starting)
+                                    "processing" -> GlowStrings.get(R.string.vi_st_processing)
+                                    "succeeded" -> GlowStrings.get(R.string.vi_st_succeeded)
+                                    else -> GlowStrings.get(R.string.vi_st_other, state)
                                 }
                             }
                             resultFile = file
                             phase = "done"
-                            status = "اكتمل العزل وحُفظ الملف داخل مساحة Glow."
+                            status = GlowStrings.get(R.string.vi_done)
                         } catch (cancel: CancellationException) {
                             phase = "canceled"
-                            status = "تم إيقاف العملية من التطبيق."
+                            status = GlowStrings.get(R.string.vi_cancelled)
                             throw cancel
                         } catch (error: Exception) {
                             phase = "error"
@@ -302,10 +304,10 @@ fun VocalIsolationScreen(modifier: Modifier = Modifier) {
                                 message.contains("429") ||
                                     message.contains("throttled", true) ||
                                     message.contains("rate limit", true) ->
-                                    "الخدمة وصلت إلى حد الطلبات حالياً. انتظر حتى تتجدد الحصة قبل إعادة المحاولة."
+                                    GlowStrings.get(R.string.vi_rate_limit)
                                 message.contains("50 MB", true) ->
-                                    "حجم الملف أكبر من الحد المسموح به (50 ميجابايت). اختر ملفاً أصغر."
-                                else -> message.ifBlank { "حدث خطأ غير متوقع أثناء المعالجة." }
+                                    GlowStrings.get(R.string.vi_too_big)
+                                else -> message.ifBlank { GlowStrings.get(R.string.vi_unexpected) }
                             }
                         }
                     }
@@ -315,10 +317,10 @@ fun VocalIsolationScreen(modifier: Modifier = Modifier) {
             ) {
                 Text(
                     when (phase) {
-                        "uploading" -> "جارٍ رفع الأغنية…"
-                        "processing" -> "جارٍ عزل الصوت…"
-                        "done" -> "إعادة معالجة الأغنية"
-                        else -> "ابدأ عزل صوت المغني"
+                        "uploading" -> GlowStrings.get(R.string.vi_btn_uploading)
+                        "processing" -> GlowStrings.get(R.string.vi_btn_processing)
+                        "done" -> GlowStrings.get(R.string.vi_btn_reprocess)
+                        else -> GlowStrings.get(R.string.vi_btn_start)
                     },
                     fontWeight = FontWeight.Bold,
                     fontSize = 16.sp,
@@ -347,13 +349,13 @@ fun VocalIsolationScreen(modifier: Modifier = Modifier) {
                     modifier = Modifier.fillMaxWidth().height(48.dp),
                     contentColor = Color(0xFFFF6B8E),
                 ) {
-                    Text(if (predictionId.isBlank()) "إيقاف الرفع" else "إلغاء المعالجة")
+                    Text(if (predictionId.isBlank()) GlowStrings.get(R.string.vi_stop_upload) else GlowStrings.get(R.string.vi_cancel_proc))
                 }
             }
         }
 
         StudioCard(skin = skin) {
-            SectionHeading("حالة المهمة والنتيجة", "04", skin)
+            SectionHeading(GlowStrings.get(R.string.vi_sec_result), "04", skin)
             Text(
                 status,
                 color = when (phase) {
@@ -382,20 +384,20 @@ fun VocalIsolationScreen(modifier: Modifier = Modifier) {
                     onClick = { openResult(context, file) },
                     modifier = Modifier.fillMaxWidth().height(50.dp),
                 ) {
-                    Text("تشغيل صوت المغني")
+                    Text(GlowStrings.get(R.string.vi_play_vocal))
                 }
                 GlowOutlinedButton(
                     onClick = { shareResult(context, file) },
                     modifier = Modifier.fillMaxWidth().height(48.dp),
                     contentColor = skin.accentText,
                 ) {
-                    Text("مشاركة الملف الناتج")
+                    Text(GlowStrings.get(R.string.vi_share_result))
                 }
             }
         }
 
         Text(
-            "ملاحظة الجودة: قد تبقى آثار من الآلات أو المؤثرات حسب جودة التسجيل والمكساج الأصلي. المعالجة تستخدم رصيد Replicate وقد تخضع لحدود الاستخدام.",
+            GlowStrings.get(R.string.vi_quality_note),
             color = skin.textSecondary,
             fontSize = 12.sp,
             lineHeight = 19.sp,
@@ -435,11 +437,11 @@ private fun StudioHero(
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                 Text(
                     when {
-                        active -> "استوديو العزل يعمل"
-                        phase == "done" -> "اكتملت المهمة"
-                        phase == "error" -> "تحتاج المهمة إلى مراجعة"
-                        selected -> "الأغنية جاهزة"
-                        else -> "مساحة فصل الصوت"
+                        active -> GlowStrings.get(R.string.vi_hero_active)
+                        phase == "done" -> GlowStrings.get(R.string.vi_hero_done)
+                        phase == "error" -> GlowStrings.get(R.string.vi_hero_error)
+                        selected -> GlowStrings.get(R.string.vi_hero_selected)
+                        else -> GlowStrings.get(R.string.vi_hero_idle)
                     },
                     color = skin.text,
                     fontWeight = FontWeight.Bold,
@@ -447,11 +449,11 @@ private fun StudioHero(
                 )
                 Text(
                     when {
-                        active -> "اترك Glow مفتوحاً حتى تكتمل العملية."
-                        phase == "done" -> "ملف صوت المغني أصبح جاهزاً."
-                        phase == "error" -> "راجع رسالة الحالة أدناه."
-                        selected -> "الخطوة التالية: فحص اتصال الخادم."
-                        else -> "اختر ملفاً صوتياً للبدء."
+                        active -> GlowStrings.get(R.string.vi_sub_active)
+                        phase == "done" -> GlowStrings.get(R.string.vi_sub_done)
+                        phase == "error" -> GlowStrings.get(R.string.vi_sub_error)
+                        selected -> GlowStrings.get(R.string.vi_sub_selected)
+                        else -> GlowStrings.get(R.string.vi_sub_idle)
                     },
                     color = skin.textSecondary,
                     fontSize = 12.sp,
@@ -512,9 +514,9 @@ private fun queryName(context: Context, uri: Uri): String {
             null,
         )?.use { cursor ->
             if (cursor.moveToFirst()) cursor.getString(0) else null
-        } ?: "ملف صوتي"
+        } ?: GlowStrings.get(R.string.audio_file)
     } catch (_: Exception) {
-        "ملف صوتي"
+        GlowStrings.get(R.string.audio_file)
     }
 }
 
@@ -545,7 +547,7 @@ private fun shareResult(context: Context, file: File) {
         .putExtra(Intent.EXTRA_STREAM, uri)
         .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
     try {
-        context.startActivity(Intent.createChooser(intent, "مشاركة صوت المغني"))
+        context.startActivity(Intent.createChooser(intent, GlowStrings.get(R.string.vi_share_chooser)))
     } catch (_: Exception) {
         // Keep the result available in the app if no share target exists.
     }

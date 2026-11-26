@@ -36,6 +36,8 @@ import com.glow.app.ui.common.GlowIconTap
 import com.glow.app.ui.common.IconKind
 import com.glow.app.ui.common.formatTime
 import com.glow.app.ui.theme.LocalGlowSkin
+import com.glow.app.GlowStrings
+import com.glow.app.R
 
 /** شريط التقدم مع الزمن، وصف أزرار: خلط، سابق، تشغيل، تالٍ، تكرار. كلها بلون [contentColor]. */
 @Composable
@@ -77,7 +79,7 @@ fun NowPlayingControls(
                     modifier = Modifier
                         .height(36.dp)
                         .semantics {
-                            contentDescription = "التقدم"
+                            contentDescription = GlowStrings.get(R.string.progress)
                             progressBarRangeInfo = ProgressBarRangeInfo(latestValue, 0f..1f)
                             setProgress { target ->
                                 onSeek((target.coerceIn(0f, 1f) * state.durationMs).toLong())
@@ -92,7 +94,7 @@ fun NowPlayingControls(
                 onValueChange = { drag = it },
                 onValueChangeFinished = { finishSeek() },
                 color = contentColor,
-                description = "التقدم",
+                description = GlowStrings.get(R.string.progress),
                 accent = accent,
             )
         }
@@ -108,24 +110,24 @@ fun NowPlayingControls(
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            GlowIconTap("خلط", onShuffle) {
+            GlowIconTap(GlowStrings.get(R.string.shuffle), onShuffle) {
                 GlowIcon(IconKind.Shuffle, contentColor.copy(alpha = if (state.shuffle) 1f else 0.5f))
             }
             val playIcon = if (state.isPlaying) IconKind.Pause else IconKind.Play
-            val playLabel = if (state.isPlaying) "إيقاف مؤقت" else "تشغيل"
+            val playLabel = if (state.isPlaying) GlowStrings.get(R.string.pause) else GlowStrings.get(R.string.play)
             if (liquidBackdrop != null) {
                 val surface = Color.White.copy(alpha = 0.12f)
-                LiquidCircleButton(onPrevious, liquidBackdrop, 56.dp, "السابق", surfaceColor = surface) {
+                LiquidCircleButton(onPrevious, liquidBackdrop, 56.dp, GlowStrings.get(R.string.previous), surfaceColor = surface) {
                     GlowIcon(IconKind.Prev, contentColor, 32.dp)
                 }
                 LiquidCircleButton(onTogglePlay, liquidBackdrop, 76.dp, playLabel, surfaceColor = surface) {
                     GlowIcon(playIcon, contentColor, 44.dp)
                 }
-                LiquidCircleButton(onNext, liquidBackdrop, 56.dp, "التالي", surfaceColor = surface) {
+                LiquidCircleButton(onNext, liquidBackdrop, 56.dp, GlowStrings.get(R.string.next), surfaceColor = surface) {
                     GlowIcon(IconKind.Next, contentColor, 32.dp)
                 }
             } else {
-                GlowIconTap("السابق", onPrevious, size = 56.dp) {
+                GlowIconTap(GlowStrings.get(R.string.previous), onPrevious, size = 56.dp) {
                     GlowIcon(IconKind.Prev, contentColor, 32.dp)
                 }
                 GlowIconTap(
@@ -135,11 +137,11 @@ fun NowPlayingControls(
                 ) {
                     GlowIcon(playIcon, contentColor, 52.dp)
                 }
-                GlowIconTap("التالي", onNext, size = 56.dp) {
+                GlowIconTap(GlowStrings.get(R.string.next), onNext, size = 56.dp) {
                     GlowIcon(IconKind.Next, contentColor, 32.dp)
                 }
             }
-            GlowIconTap("تكرار", onRepeat) {
+            GlowIconTap(GlowStrings.get(R.string.repeat), onRepeat) {
                 GlowIcon(
                     if (state.repeat == RepeatMode.One) IconKind.RepeatOne else IconKind.Repeat,
                     contentColor.copy(alpha = if (state.repeat == RepeatMode.Off) 0.5f else 1f),

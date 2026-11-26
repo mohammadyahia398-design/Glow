@@ -12,6 +12,8 @@ import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
 import java.util.UUID
+import com.glow.app.GlowStrings
+import com.glow.app.R
 
 /** Network boundary for the vocal-isolation service. No provider secret is stored on-device. */
 class VocalIsolationClient(private val context: Context) {
@@ -28,7 +30,7 @@ class VocalIsolationClient(private val context: Context) {
         try {
             val body = readJson(c)
             if (c.responseCode !in 200..299 || !body.optBoolean("ok")) {
-                error(body.optString("error").ifBlank { "خادم Glow لا يستجيب بصورة صحيحة." })
+                error(body.optString("error").ifBlank { GlowStrings.get(R.string.vi_err_server_bad) })
             }
         } finally {
             c.disconnect()
@@ -49,7 +51,7 @@ class VocalIsolationClient(private val context: Context) {
         }
         try {
             val input = context.contentResolver.openInputStream(source)
-                ?: error("تعذّر فتح الملف الصوتي المحدد.")
+                ?: error(GlowStrings.get(R.string.vi_err_open))
             connection.outputStream.use { raw ->
                 BufferedOutputStream(raw).use { out ->
                     out.write("--$boundary\r\nContent-Disposition: form-data; name=\"audio\"; filename=\"${safeName(displayName)}\"\r\nContent-Type: application/octet-stream\r\n\r\n".toByteArray())
@@ -60,12 +62,12 @@ class VocalIsolationClient(private val context: Context) {
             val body = readJson(connection)
             val id = body.optString("predictionId")
             if (connection.responseCode !in 200..299 || id.isBlank()) {
-                val detail = body.optString("error", "تعذّر بدء معالجة الصوت (${connection.responseCode}).")
+                val detail = body.optString("error", GlowStrings.get(R.string.vi_err_start, connection.responseCode))
                 error(
                     when (connection.responseCode) {
-                        429 -> "وصل الخادم إلى حد الطلبات المسموح به. انتظر قبل المحاولة مجدداً."
-                        413 -> "حجم الملف يتجاوز الحد المسموح به (50 ميجابايت)."
-                        503 -> "خادم المعالجة غير مكتمل الإعداد. تحقّق من سر Replicate في Cloudflare."
+                        429 -> GlowStrings.get(R.string.vi_err_429)
+                        413 -> GlowStrings.get(R.string.vi_err_413)
+                        503 -> GlowStrings.get(R.string.vi_err_503)
                         else -> detail
                     },
                 )
@@ -87,7 +89,7 @@ class VocalIsolationClient(private val context: Context) {
             val result = try {
                 val body = readJson(c)
                 if (c.responseCode !in 200..299) {
-                    error(body.optString("error", "تعذّر التحقق من حالة المعالجة."))
+                    error(body.optString("error", GlowStrings.get(R.string.vi_err_check)))
                 }
                 Progress(body.optString("status", "processing"), body.optBoolean("audioReady"))
             } finally {
@@ -96,12 +98,12 @@ class VocalIsolationClient(private val context: Context) {
             onStatus(result.status)
             when (result.status.lowercase()) {
                 "succeeded" -> if (result.ready) return@withContext download(baseUrl, id)
-                    else error("اكتملت المعالجة لكن لم يُعثر على ملف صوت المغني.")
-                "failed", "canceled", "cancelled" -> error("فشلت المعالجة: حالة المهمة ${result.status}.")
+                    else error(GlowStrings.get(R.string.vi_err_nofile))
+                "failed", "canceled", "cancelled" -> error(GlowStrings.get(R.string.vi_err_failed, result.status))
             }
             delay(3_000)
         }
-        error("انتهت مهلة المعالجة. يمكنك المحاولة مجدداً.")
+        error(GlowStrings.get(R.string.vi_err_timeout))
     }
 
     suspend fun cancel(baseUrl: String, id: String) = withContext(Dispatchers.IO) {
@@ -113,7 +115,7 @@ class VocalIsolationClient(private val context: Context) {
         try {
             val body = readJson(c)
             if (c.responseCode !in 200..299) {
-                error(body.optString("error", "تعذّر إلغاء المعالجة."))
+                error(body.optString("error", GlowStrings.get(R.string.vi_err_cancel)))
             }
         } finally {
             c.disconnect()
@@ -128,7 +130,7 @@ class VocalIsolationClient(private val context: Context) {
         try {
             if (c.responseCode !in 200..299) {
                 val body = readJson(c)
-                error(body.optString("error", "تعذّر تنزيل ملف الصوت الناتج (${c.responseCode})."))
+                error(body.optString("error", GlowStrings.get(R.string.vi_err_download, c.responseCode)))
             }
             val dir = File(context.getExternalFilesDir(null) ?: context.filesDir, "Glow/Vocals").apply { mkdirs() }
             val target = File(dir, "Glow-Vocals-${System.currentTimeMillis()}.wav")
@@ -139,7 +141,7 @@ class VocalIsolationClient(private val context: Context) {
             }
             if (!target.exists() || target.length() < 44) {
                 target.delete()
-                error("الملف الصوتي الناتج غير صالح أو فارغ.")
+                error(GlowStrings.get(R.string.vi_err_invalid_audio))
             }
             return target
         } finally {
@@ -153,12 +155,12 @@ class VocalIsolationClient(private val context: Context) {
         return try {
             JSONObject(text)
         } catch (_: Exception) {
-            JSONObject().put("error", "استجابة غير مفهومة من الخادم.")
+            JSONObject().put("error", GlowStrings.get(R.string.vi_err_unclear))
         }
     }
 
     private fun normalized(value: String) = value.trim().trimEnd('/').also {
-        require(it.startsWith("https://")) { "أدخل عنوان Backend صالحاً يبدأ بـ https://" }
+        require(it.startsWith("https://")) { GlowStrings.get(R.string.vi_err_backend) }
     }
 
     private fun safeName(value: String) =

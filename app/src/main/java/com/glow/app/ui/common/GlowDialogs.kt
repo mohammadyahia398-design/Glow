@@ -49,6 +49,8 @@ import com.glow.app.liquid.ui.LiquidButton
 import com.glow.app.ui.glass.core.rememberGlassTier
 import com.glow.app.ui.theme.LocalGlowSkin
 import com.glow.app.ui.theme.accentBrush
+import com.glow.app.GlowStrings
+import com.glow.app.R
 
 /** خلفية النافذة الزجاجية التي تنكسر خلف أزرارها وصفوفها (أندرويد 13+)، وnull حيث لا انكسار. */
 val LocalDialogBackdrop = compositionLocalOf<Backdrop?> { null }
@@ -287,7 +289,7 @@ fun <T> GlowChoiceDialog(
     GlowDialog(
         title = title,
         onDismiss = onDismiss,
-        actions = { GlowDialogAction("إلغاء", onDismiss) },
+        actions = { GlowDialogAction(GlowStrings.get(R.string.cancel), onDismiss) },
     ) {
         options.forEach { (value, label) ->
             GlowDialogRow(label, onClick = { onSelect(value); onDismiss() }, radio = value == selected)

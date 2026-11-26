@@ -30,6 +30,8 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.sp
 import com.glow.app.ui.theme.LocalGlowSkin
 import com.glow.app.ui.theme.GlowTheme
+import com.glow.app.GlowStrings
+import com.glow.app.R
 
 /** زر دائري قابل للنقر مع وصف لقارئ الشاشة. */
 @Composable
@@ -94,7 +96,7 @@ fun GlowTopBar(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (onBack != null) {
-            GlowIconTap("رجوع", onBack, size = 44.dp, glass = true) { GlowIcon(backIcon, skin.text) }
+            GlowIconTap(GlowStrings.get(R.string.back), onBack, size = 44.dp, glass = true) { GlowIcon(backIcon, skin.text) }
         }
         Text(
             text = title.orEmpty(),

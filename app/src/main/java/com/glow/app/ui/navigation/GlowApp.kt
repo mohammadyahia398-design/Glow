@@ -85,6 +85,8 @@ import com.glow.app.ui.common.GlowTopBar
 import com.glow.app.ui.theme.LocalGlowSkin
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlin.random.Random
+import com.glow.app.GlowStrings
+import com.glow.app.R
 
 /** ارتفاع الشريط السفلي مع هوامشه؛ يُرفَع به المشغّل المصغّر فوقه. */
 private val BarLift = 84.dp
@@ -153,7 +155,7 @@ fun GlowApp(
             if (isRescan) loaded = false
             tracks = repository.loadTracks()
             loaded = true
-            if (isRescan) snackbar.show("تم تحديث المكتبة، عدد الأغاني: ${tracks.size}")
+            if (isRescan) snackbar.show(GlowStrings.get(R.string.library_updated, tracks.size))
         }
     }
     val visibleTracks = remember(tracks, settings.skipShortSongs, settings.skipShortSeconds) {
@@ -235,10 +237,10 @@ fun GlowApp(
     LaunchedEffect(current?.id) { current?.let { library.recordPlay(it.id) } }
     LaunchedEffect(controller) {
         controller?.playbackErrors?.collect { f ->
-            val name = f.track?.displayTitle?.let { "«$it»" } ?: "الأغنية"
-            val text = "تعذّر تشغيل $name: ${f.reason}" + if (f.stopped) "" else " — تم التخطي"
+            val name = f.track?.displayTitle?.let { "«$it»" } ?: GlowStrings.get(R.string.the_song)
+            val text = if (f.stopped) GlowStrings.get(R.string.playback_failed, name, f.reason) else GlowStrings.get(R.string.playback_failed_skipped, name, f.reason)
             val failed = f.track
-            if (failed != null) snackbar.show(text, "إعادة المحاولة") { controller?.retryTrack(failed) }
+            if (failed != null) snackbar.show(text, GlowStrings.get(R.string.retry)) { controller?.retryTrack(failed) }
             else snackbar.show(text)
         }
     }
@@ -288,7 +290,7 @@ fun GlowApp(
                     }
                 } else if (showOnline) {
                     Column(Modifier.fillMaxSize()) {
-                        GlowTopBar(title = "البحث في الإنترنت", onBack = { showOnline = false })
+                        GlowTopBar(title = GlowStrings.get(R.string.online_title), onBack = { showOnline = false })
                         OnlineSearchScreen(
                             currentId = current?.id,
                             isPlaying = playerState.isPlaying,
@@ -322,17 +324,17 @@ fun GlowApp(
                             val queued = stateFlow.value.queue
                             when {
                                 queued.any { it.id == track.id } ->
-                                    snackbar.show("المقطع موجود بالفعل في الطابور")
+                                    snackbar.show(GlowStrings.get(R.string.already_in_queue))
                                 stateFlow.value.current == null -> {
                                     controller?.addToQueue(listOf(track))
-                                    snackbar.show("بدأ تشغيل المقطع")
+                                    snackbar.show(GlowStrings.get(R.string.started_playing))
                                 }
                                 else -> {
                                     if (playNext) controller?.playNext(listOf(track))
                                     else controller?.addToQueue(listOf(track))
                                     snackbar.show(
-                                        if (playNext) "سيُشغَّل بعد المقطع الحالي" else "أُضيف إلى نهاية الطابور",
-                                        "تراجع",
+                                        if (playNext) GlowStrings.get(R.string.will_play_next) else GlowStrings.get(R.string.added_queue_end),
+                                        GlowStrings.get(R.string.undo),
                                     ) {
                                         val pos = stateFlow.value.queue.indexOfFirst { it.id == track.id }
                                         if (pos >= 0) controller?.removeQueueItem(pos)

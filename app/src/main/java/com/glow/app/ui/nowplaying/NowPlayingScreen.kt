@@ -46,6 +46,8 @@ import com.glow.app.ui.settings.EqualizerSheet
 import com.glow.app.ui.common.rememberArtPalette
 import com.glow.app.ui.common.rememberArt
 import com.glow.app.ui.theme.LocalGlowSkin
+import com.glow.app.GlowStrings
+import com.glow.app.R
 
 /** المشغّل الكامل: غلاف كبير وعنوان وعناصر التحكم، فوق خلفية حيّة بألوان الغلاف. */
 @Composable
@@ -114,7 +116,7 @@ fun NowPlayingScreen(
                         .padding(horizontal = 14.dp, vertical = 8.dp),
                 ) {
                     Text(
-                        text = if (showLyrics) "الغلاف" else "الكلمات",
+                        text = if (showLyrics) GlowStrings.get(R.string.cover) else GlowStrings.get(R.string.lyrics),
                         color = Color.White,
                         fontSize = 12.5.sp,
                         fontWeight = FontWeight.SemiBold,
@@ -144,7 +146,7 @@ fun NowPlayingScreen(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                val queueLabel = "قائمة التشغيل · ${state.queue.size}"
+                val queueLabel = GlowStrings.get(R.string.queue_label, state.queue.size)
                 if (useGlass) {
                     val surface = Color.White.copy(alpha = 0.12f)
                     LiquidButton(
@@ -171,7 +173,7 @@ fun NowPlayingScreen(
                     ) {
                         GlowIcon(IconKind.Equalizer, contentColor, 20.dp)
                         Text(
-                            "المعادل",
+                            GlowStrings.get(R.string.equalizer),
                             color = contentColor,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.SemiBold,
@@ -186,7 +188,7 @@ fun NowPlayingScreen(
                     }
                     GlowOutlinedButton(onClick = { showEqualizer = true }, modifier = Modifier.weight(1f)) {
                         GlowIcon(IconKind.Equalizer, skin.accentText, 20.dp)
-                        Text("المعادل", maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(GlowStrings.get(R.string.equalizer), maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                 }
             }

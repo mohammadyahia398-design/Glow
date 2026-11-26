@@ -37,6 +37,8 @@ import com.glow.app.ui.theme.LocalGlowSkin
 import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import com.glow.app.GlowStrings
+import com.glow.app.R
 
 /**
  * شريط تمرير سريع للقوائم الطويلة: مقبض يظهر أثناء التمرير ويختفي بعد لحظة؛ اسحبه للقفز في القائمة،
@@ -116,7 +118,7 @@ fun GlowFastScroll(
                     .offset { IntOffset(0, offsetY) }
                     .size(width = 28.dp, height = thumbHeight)
                     .graphicsLayer { this.alpha = shownAlpha }
-                    .semantics { contentDescription = "تمرير سريع" }
+                    .semantics { contentDescription = GlowStrings.get(R.string.fast_scroll) }
                     .pointerInput(trackPx) {
                         detectVerticalDragGestures(
                             onDragStart = {

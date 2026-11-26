@@ -6,6 +6,8 @@ import android.os.Build
 import android.provider.MediaStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import com.glow.app.GlowStrings
+import com.glow.app.R
 
 /**
  * يقرأ الموسيقى من MediaStore.
@@ -78,8 +80,8 @@ class MediaStoreRepository(private val context: Context) {
         if (raw.isNullOrBlank() || raw == MediaStore.UNKNOWN_STRING) fallback else raw
 
     private companion object {
-        const val UNTITLED = "بدون عنوان"
-        const val UNKNOWN_ARTIST = "فنان غير معروف"
-        const val UNKNOWN_ALBUM = "ألبوم غير معروف"
+        val UNTITLED: String get() = GlowStrings.get(R.string.track_untitled)
+        val UNKNOWN_ARTIST: String get() = GlowStrings.get(R.string.artist_unknown)
+        val UNKNOWN_ALBUM: String get() = GlowStrings.get(R.string.album_unknown)
     }
 }

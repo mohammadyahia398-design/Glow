@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="shortcut_shuffle_short">تشغيل عشوائي</string>
+    <string name="shortcut_shuffle_long">تشغيل كل الأغاني عشوائياً</string>
+    <string name="shortcut_online_short">بحث بالإنترنت</string>
+    <string name="shortcut_online_long">البحث عن موسيقى في الإنترنت</string>
+</resources>

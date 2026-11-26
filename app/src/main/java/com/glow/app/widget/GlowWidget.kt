@@ -22,6 +22,7 @@ import com.glow.app.media.GlowMediaSessionService
 import com.glow.app.media.PlayerState
 import com.glow.app.media.displayTitle
 import kotlin.math.min
+import com.glow.app.GlowStrings
 
 /** ويدجت الشاشة الرئيسية: الغلاف والعنوان والفنان وأزرار السابق/تشغيل/التالي. */
 class GlowWidgetProvider : AppWidgetProvider() {
@@ -38,7 +39,7 @@ object GlowWidget {
     @Volatile
     private var last: Snapshot? = null
 
-    private const val UNKNOWN_ARTIST = "فنان غير معروف"
+    private val UNKNOWN_ARTIST: String get() = GlowStrings.get(R.string.artist_unknown)
     private const val ART_PX = 240
 
     /** يحدّث كل نسخ الويدجت. مرّر state بلا مقطع (أو null) لعرض حالة السكون. */
@@ -61,7 +62,7 @@ object GlowWidget {
         views.setImageViewBitmap(R.id.widget_art, roundedArt(snap?.art))
         if (snap == null) {
             views.setTextViewText(R.id.widget_title, "Glow")
-            views.setTextViewText(R.id.widget_artist, "اضغط لفتح التطبيق")
+            views.setTextViewText(R.id.widget_artist, GlowStrings.get(R.string.tap_to_open))
             views.setViewVisibility(R.id.widget_controls, View.GONE)
         } else {
             views.setTextViewText(R.id.widget_title, snap.title)

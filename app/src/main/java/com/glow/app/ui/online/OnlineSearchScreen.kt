@@ -60,6 +60,8 @@ import com.glow.app.ui.library.LibraryBottomInset
 import com.glow.app.ui.theme.LocalGlowSkin
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
+import com.glow.app.GlowStrings
+import com.glow.app.R
 
 private sealed interface OnlineState {
     data object Idle : OnlineState
@@ -123,7 +125,7 @@ fun OnlineSearchScreen(
             GlowIcon(IconKind.Search, skin.textSecondary, 20.dp)
             Box(Modifier.weight(1f).padding(horizontal = 12.dp), contentAlignment = Alignment.CenterStart) {
                 if (query.isEmpty()) {
-                    Text("ابحث عن أغنية أو فنان", color = skin.textSecondary, fontSize = 15.sp)
+                    Text(GlowStrings.get(R.string.online_hint), color = skin.textSecondary, fontSize = 15.sp)
                 }
                 BasicTextField(
                     value = query,
@@ -144,22 +146,22 @@ fun OnlineSearchScreen(
         ) {
             when (val s = state) {
                 OnlineState.Idle -> GlowEmptyState(
-                    title = "موسيقى مجانية",
-                    message = "اكتب اسم أغنية أو فنان للبحث في Audius.",
+                    title = GlowStrings.get(R.string.free_music),
+                    message = GlowStrings.get(R.string.online_prompt),
                     icon = IconKind.Search,
                 )
-                OnlineState.Loading -> GlowLoading(Modifier.align(Alignment.Center), label = "جارٍ البحث…")
+                OnlineState.Loading -> GlowLoading(Modifier.align(Alignment.Center), label = GlowStrings.get(R.string.searching))
                 OnlineState.Failed -> GlowEmptyState(
-                    title = "تعذّر البحث",
-                    message = "تحقق من الاتصال بالإنترنت ثم حاول مرة أخرى.",
+                    title = GlowStrings.get(R.string.search_failed),
+                    message = GlowStrings.get(R.string.check_connection),
                     icon = IconKind.Search,
-                    actionLabel = "إعادة المحاولة",
+                    actionLabel = GlowStrings.get(R.string.retry),
                     onAction = { retry++ },
                 )
                 is OnlineState.Done -> if (s.tracks.isEmpty()) {
                     GlowEmptyState(
-                        title = "لا نتائج",
-                        message = "جرّب كلمات أخرى.",
+                        title = GlowStrings.get(R.string.no_results),
+                        message = GlowStrings.get(R.string.try_other_words),
                         icon = IconKind.Search,
                     )
                 } else {
@@ -216,7 +218,7 @@ fun OnlineSearchScreen(
                                     )
                                 }
                                 GlowRoundButton(
-                                    CoreGlyphs.More, "المزيد", { menuFor = t },
+                                    CoreGlyphs.More, GlowStrings.get(R.string.more), { menuFor = t },
                                     size = 38.dp, tint = skin.textSecondary,
                                 )
                             }
@@ -231,22 +233,22 @@ fun OnlineSearchScreen(
         GlowDialog(
             title = t.title,
             onDismiss = { menuFor = null },
-            actions = { GlowDialogAction("إغلاق", { menuFor = null }) },
+            actions = { GlowDialogAction(GlowStrings.get(R.string.close), { menuFor = null }) },
         ) {
-            GlowDialogRow(if (isFav) "إزالة من المفضلة" else "إضافة إلى المفضلة", {
+            GlowDialogRow(if (isFav) GlowStrings.get(R.string.remove_from_favs) else GlowStrings.get(R.string.add_to_favs), {
                 val added = store.toggleOnlineFavorite(t)
-                snackbar?.show(if (added) "أُضيف إلى المفضلة" else "أُزيل من المفضلة")
+                snackbar?.show(if (added) GlowStrings.get(R.string.fav_added) else GlowStrings.get(R.string.fav_removed))
                 menuFor = null
             })
             if (t.downloadUrl != null) {
-                GlowDialogRow("تحميل", {
+                GlowDialogRow(GlowStrings.get(R.string.download), {
                     val ok = TrackDownloader.start(context, t)
-                    snackbar?.show(if (ok) "بدأ التحميل إلى مجلد Music/Glow" else "تعذّر بدء التحميل")
+                    snackbar?.show(if (ok) GlowStrings.get(R.string.download_started) else GlowStrings.get(R.string.download_failed))
                     menuFor = null
                 })
             } else {
                 Text(
-                    "التحميل غير متاح لهذه الأغنية (صاحبها لم يسمح به).",
+                    GlowStrings.get(R.string.download_unavailable),
                     color = skin.textSecondary,
                     fontSize = 13.sp,
                     modifier = Modifier.padding(vertical = 8.dp),

@@ -19,7 +19,7 @@ object CrashReporter {
             runCatching {
                 val full = Log.getStackTraceString(error).lines()
                 val trimmed = if (full.size > 130) {
-                    full.take(70) + listOf("… (حُذف الوسط) …") + full.takeLast(55)
+                    full.take(70) + listOf(GlowStrings.get(R.string.crash_trimmed)) + full.takeLast(55)
                 } else {
                     full
                 }

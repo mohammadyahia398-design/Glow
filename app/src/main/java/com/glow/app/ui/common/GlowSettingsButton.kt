@@ -16,6 +16,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.glow.app.ui.theme.LocalGlowSkin
+import com.glow.app.GlowStrings
+import com.glow.app.R
 
 /** Compatibility color retained for callers that referenced the old token. */
 val GlowIndigo = Color(0xFF7226FF)
@@ -29,7 +31,7 @@ fun GlowSettingsButton(
     corner: Dp = 50.dp,
     container: Color? = null,
     bars: Color? = null,
-    description: String = "الإعدادات",
+    description: String = GlowStrings.get(R.string.settings),
 ) {
     val skin = LocalGlowSkin.current
     val shape = RoundedCornerShape(corner)

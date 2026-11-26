@@ -1,4 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="widget_description">مشغّل Glow: غلاف الأغنية الحالية وعنوانها وأزرار السابق والتشغيل والتالي.</string>
+    <string name="widget_description">Glow player: the current song’s cover and title, with previous, play and next buttons.</string>
 </resources>

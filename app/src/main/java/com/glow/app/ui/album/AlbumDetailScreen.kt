@@ -30,6 +30,8 @@ import com.glow.app.ui.common.MediaRow
 import com.glow.app.ui.common.formatTime
 import com.glow.app.ui.library.MediaGroup
 import com.glow.app.ui.theme.LocalGlowSkin
+import com.glow.app.GlowStrings
+import com.glow.app.R
 
 /** شاشة ألبوم أو فنان: غلاف كبير، عنوان، زرّا خلط وتشغيل، ثم المقاطع مرقّمة. */
 @Composable
@@ -45,7 +47,7 @@ fun CollectionScreen(
     val tracks = collection.tracks
     val info = listOfNotNull(
         collection.subtitle.takeIf { it.isNotBlank() },
-        "${tracks.size} أغنية",
+        GlowStrings.songs(tracks.size),
     ).joinToString(" • ")
 
     LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 150.dp)) {
@@ -76,10 +78,10 @@ fun CollectionScreen(
                     Modifier.padding(top = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
-                    GlowIconTap("تشغيل عشوائي", onShuffle, size = 56.dp, background = skin.chip) {
+                    GlowIconTap(GlowStrings.get(R.string.shuffle_play), onShuffle, size = 56.dp, background = skin.chip) {
                         GlowIcon(IconKind.Shuffle, skin.text)
                     }
-                    GlowIconTap("تشغيل", { onPlay(0) }, size = 56.dp, background = skin.accent) {
+                    GlowIconTap(GlowStrings.get(R.string.play), { onPlay(0) }, size = 56.dp, background = skin.accent) {
                         GlowIcon(IconKind.Play, skin.onAccent, 28.dp)
                     }
                 }

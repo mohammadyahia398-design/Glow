@@ -9,6 +9,8 @@ import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
+import com.glow.app.GlowStrings
+import com.glow.app.R
 
 /** بحث Audius المجاني (بلا مفتاح). الروابط تُشغَّل مباشرة عبر ExoPlayer. */
 object AudiusClient {
@@ -42,8 +44,8 @@ object AudiusClient {
             out.add(
                 Track(
                     id = -(1_000_000_000L + (id.hashCode().toLong() and 0x7FFFFFFFL)),
-                    title = o.optString("title").ifBlank { "بدون عنوان" },
-                    artist = o.optJSONObject("user")?.optString("name").orEmpty().ifBlank { "فنان غير معروف" },
+                    title = o.optString("title").ifBlank { GlowStrings.get(R.string.track_untitled) },
+                    artist = o.optJSONObject("user")?.optString("name").orEmpty().ifBlank { GlowStrings.get(R.string.artist_unknown) },
                     album = "Audius",
                     albumId = -1L,
                     durationMs = o.optLong("duration") * 1000L,

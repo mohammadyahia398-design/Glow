@@ -79,19 +79,19 @@ class MainActivity : ComponentActivity() {
                     }
                     crash?.let { report ->
                         GlowDialog(
-                            title = "التطبيق أُغلق فجأة",
+                            title = GlowStrings.get(R.string.crash_title),
                             onDismiss = { crash = null },
                             actions = {
-                                GlowDialogAction("إغلاق", { crash = null })
+                                GlowDialogAction(GlowStrings.get(R.string.close), { crash = null })
                                 GlowDialogAction(
-                                    "نسخ الخطأ",
+                                    GlowStrings.get(R.string.crash_copy),
                                     { clipboard.setText(AnnotatedString(report)) },
                                     primary = true,
                                 )
                             },
                         ) {
                             Text(
-                                "اضغط «نسخ الخطأ» ثم الصقه في محادثة Claude.",
+                                GlowStrings.get(R.string.crash_hint),
                                 color = LocalGlowSkin.current.textSecondary,
                                 fontSize = 14.sp,
                             )

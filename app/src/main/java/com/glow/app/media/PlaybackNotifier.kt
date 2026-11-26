@@ -11,16 +11,17 @@ import android.graphics.drawable.Icon
 import android.media.session.MediaSession
 import com.glow.app.MainActivity
 import com.glow.app.R
+import com.glow.app.GlowStrings
 
 /** يبني إشعار التشغيل (MediaStyle) وقناته. */
 class PlaybackNotifier(private val context: Context) {
 
     // عناصر لا تتغير مع الحالة: تُبنى مرة واحدة بدل كل تحديث للإشعار.
     private val previousAction by lazy {
-        action(R.drawable.ic_notif_previous, "السابق", GlowMediaSessionService.ACTION_PREVIOUS, 1)
+        action(R.drawable.ic_notif_previous, GlowStrings.get(R.string.previous), GlowMediaSessionService.ACTION_PREVIOUS, 1)
     }
     private val nextAction by lazy {
-        action(R.drawable.ic_notif_next, "التالي", GlowMediaSessionService.ACTION_NEXT, 3)
+        action(R.drawable.ic_notif_next, GlowStrings.get(R.string.next), GlowMediaSessionService.ACTION_NEXT, 3)
     }
     private val openAppIntent by lazy { createOpenAppIntent() }
 
@@ -29,10 +30,10 @@ class PlaybackNotifier(private val context: Context) {
         if (manager.getNotificationChannel(CHANNEL_ID) == null) {
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                "التشغيل",
+                GlowStrings.get(R.string.playback_channel),
                 NotificationManager.IMPORTANCE_LOW,
             ).apply {
-                description = "عناصر التحكم بالموسيقى أثناء التشغيل"
+                description = GlowStrings.get(R.string.playback_channel_desc)
                 setShowBadge(false)
                 setSound(null, null)
             }
@@ -43,7 +44,7 @@ class PlaybackNotifier(private val context: Context) {
     fun build(state: PlayerState, token: MediaSession.Token, art: Bitmap? = null): Notification {
         val track = state.current
         val toggleIcon = if (state.isPlaying) R.drawable.ic_notif_pause else R.drawable.ic_notif_play
-        val toggleLabel = if (state.isPlaying) "إيقاف مؤقت" else "تشغيل"
+        val toggleLabel = if (state.isPlaying) GlowStrings.get(R.string.pause) else GlowStrings.get(R.string.play)
 
         // نفس منطق العرض في المكتبة: العنوان المقروء، والفنان أو تاريخ الإضافة عند غيابه.
         val title = track?.displayTitle ?: "Glow"
@@ -100,6 +101,6 @@ class PlaybackNotifier(private val context: Context) {
         const val CHANNEL_ID = "glow_playback"
 
         // مطابقة لقيمة MediaStoreRepository الخاصة (private) ولما تستخدمه LibraryScreen.
-        private const val UNKNOWN_ARTIST = "فنان غير معروف"
+        private val UNKNOWN_ARTIST: String get() = GlowStrings.get(R.string.artist_unknown)
     }
 }

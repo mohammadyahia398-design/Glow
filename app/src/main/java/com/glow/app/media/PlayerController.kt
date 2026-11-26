@@ -22,6 +22,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import com.glow.app.GlowStrings
+import com.glow.app.R
 
 /**
  * محرك تشغيل Glow المبني على AndroidX Media3 ExoPlayer.
@@ -518,13 +520,13 @@ class PlayerController(
 
     private fun reasonFor(error: PlaybackException?): String = when (error?.errorCode) {
         PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED,
-        PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT -> "تحقق من اتصالك بالإنترنت"
-        PlaybackException.ERROR_CODE_IO_FILE_NOT_FOUND -> "الملف لم يعد موجوداً"
-        PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS -> "الخادم لم يستجب لهذا المقطع"
+        PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT -> GlowStrings.get(R.string.err_network)
+        PlaybackException.ERROR_CODE_IO_FILE_NOT_FOUND -> GlowStrings.get(R.string.err_file_missing)
+        PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS -> GlowStrings.get(R.string.err_http)
         PlaybackException.ERROR_CODE_PARSING_CONTAINER_MALFORMED,
         PlaybackException.ERROR_CODE_PARSING_CONTAINER_UNSUPPORTED,
-        PlaybackException.ERROR_CODE_DECODING_FAILED -> "الملف تالف أو غير مدعوم"
-        else -> "حدث خطأ غير متوقع"
+        PlaybackException.ERROR_CODE_DECODING_FAILED -> GlowStrings.get(R.string.err_decoding)
+        else -> GlowStrings.get(R.string.err_unknown)
     }
 
     /** يعيد تشغيل مقطع فشل سابقاً (من زر «إعادة المحاولة»). */

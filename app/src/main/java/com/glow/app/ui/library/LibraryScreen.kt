@@ -71,6 +71,9 @@ import com.glow.app.media.displayTitle
 import com.glow.app.ui.common.MediaRow
 import com.glow.app.ui.common.formatTime
 import com.glow.app.ui.theme.LocalGlowSkin
+import com.glow.app.GlowStrings
+import com.glow.app.R
+import androidx.annotation.StringRes
 
 /** ألبوم أو فنان أو نوع أو قائمة: مجموعة مقاطع بغلاف واحد. */
 data class MediaGroup(
@@ -81,15 +84,17 @@ data class MediaGroup(
 )
 
 /** أقسام المكتبة. [barTabs] هي ما يظهر في الشريط السفلي؛ عدّلها لإضافة قسم أو إزالته. */
-enum class LibraryTab(val label: String, val icon: IconKind) {
-    Tracks("الأغاني", IconKind.Note),
-    Albums("الألبومات", IconKind.Album),
-    Artists("الفنانون", IconKind.Artist),
-    Genres("الأنواع", IconKind.Note),
-    Spotify("Spotify", IconKind.Note),
-    Favorites("المفضلة", IconKind.Heart),
-    Playlists("القوائم", IconKind.Playlist),
-    VocalIsolation("عزل الصوت", IconKind.Note);
+enum class LibraryTab(@StringRes val labelRes: Int, val icon: IconKind) {
+    Tracks(R.string.tab_songs, IconKind.Note),
+    Albums(R.string.tab_albums, IconKind.Album),
+    Artists(R.string.tab_artists, IconKind.Artist),
+    Genres(R.string.genres, IconKind.Note),
+    Spotify(R.string.tab_spotify, IconKind.Note),
+    Favorites(R.string.tab_favorites, IconKind.Heart),
+    Playlists(R.string.tab_playlists, IconKind.Playlist),
+    VocalIsolation(R.string.vocal_isolation, IconKind.Note);
+
+    val label: String get() = GlowStrings.get(labelRes)
 
     companion object {
         val barTabs: List<LibraryTab> = listOf(Tracks, Albums, Artists, Favorites, Playlists)
@@ -99,16 +104,18 @@ enum class LibraryTab(val label: String, val icon: IconKind) {
 /** مسافة سفلية تترك القوائم ظاهرة فوق الشريط الزجاجي والمشغّل المصغّر. */
 val LibraryBottomInset = 230.dp
 
-private const val UNKNOWN_ARTIST = "فنان غير معروف"
+private val UNKNOWN_ARTIST: String get() = GlowStrings.get(R.string.artist_unknown)
 
 private class NewPlaylist(val track: Track?)
 
 /** ترتيب قائمة الأغاني والمفضلة. */
-private enum class LibrarySort(val label: String) {
-    Title("العنوان"),
-    Artist("الفنان"),
-    Newest("الأحدث"),
-    Duration("المدة"),
+private enum class LibrarySort(@StringRes val labelRes: Int) {
+    Title(R.string.sort_title),
+    Artist(R.string.sort_artist),
+    Newest(R.string.sort_newest),
+    Duration(R.string.sort_duration);
+
+    val label: String get() = GlowStrings.get(labelRes)
 }
 
 private fun List<Track>.sortedFor(sort: LibrarySort): List<Track> = when (sort) {
@@ -192,7 +199,7 @@ fun LibraryScreen(
             titleSize = 30.sp,
             titleWeight = FontWeight.Bold,
             actions = {
-                GlowIconTap("بحث", {
+                GlowIconTap(GlowStrings.get(R.string.search), {
                     searching = !searching
                     if (!searching) query = ""
                 }, size = 44.dp, glass = true) { GlowIcon(IconKind.Search, if (searching) skin.accentText else skin.text) }
@@ -206,9 +213,9 @@ fun LibraryScreen(
                 contentPadding = PaddingValues(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                item { GlowChip("الأنواع", tab == LibraryTab.Genres, { showGenres = !showGenres }) }
-                item { GlowChip("عزل الصوت", false, onOpenVocalIsolation) }
-                item { GlowChip("الإنترنت", false, onOpenOnline) }
+                item { GlowChip(GlowStrings.get(R.string.genres), tab == LibraryTab.Genres, { showGenres = !showGenres }) }
+                item { GlowChip(GlowStrings.get(R.string.vocal_isolation), false, onOpenVocalIsolation) }
+                item { GlowChip(GlowStrings.get(R.string.chip_online), false, onOpenOnline) }
             }
         }
         if (loaded && hasAudioAccess && tracks.isNotEmpty() &&
@@ -218,7 +225,7 @@ fun LibraryScreen(
                 Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
                 horizontalArrangement = Arrangement.Start,
             ) {
-                GlowTextButton(onClick = { sortOpen = true }) { Text("الترتيب: " + sort.label) }
+                GlowTextButton(onClick = { sortOpen = true }) { Text(GlowStrings.get(R.string.sort_label, sort.label)) }
             }
         }
 
@@ -236,18 +243,18 @@ fun LibraryScreen(
                 !hasAudioAccess -> PermissionPrompt(onRequestPermission)
                 !loaded && tab != LibraryTab.Spotify -> GlowLoading(
                     Modifier.align(Alignment.Center),
-                    label = "جارٍ فحص المكتبة…",
+                    label = GlowStrings.get(R.string.scanning),
                 )
                 loaded && tracks.isEmpty() -> GlowEmptyState(
-                    title = "لا توجد موسيقى",
-                    message = "لم نجد أي ملف صوتي على هذا الجهاز. أضف أغاني ثم أعد فتح Glow.",
+                    title = GlowStrings.get(R.string.empty_music_title),
+                    message = GlowStrings.get(R.string.empty_music_msg),
                     icon = IconKind.Note,
-                    actionLabel = "فتح الإعدادات",
+                    actionLabel = GlowStrings.get(R.string.open_settings),
                     onAction = onOpenSettings,
                 )
                 tab == LibraryTab.Spotify -> GlowEmptyState(
-                    title = "Spotify قريباً",
-                    message = "تكامل Spotify غير متاح بعد.",
+                    title = GlowStrings.get(R.string.spotify_title),
+                    message = GlowStrings.get(R.string.spotify_msg),
                     icon = IconKind.Playlist,
                 )
                 tab == LibraryTab.Playlists -> PlaylistsTab(
@@ -255,18 +262,18 @@ fun LibraryScreen(
                     onOpen = onOpen, onNew = { newPlaylist = NewPlaylist(null) },
                 )
                 shown.isEmpty() && loaded -> GlowEmptyState(
-                    title = "لا نتائج",
-                    message = "جرّب كلمات بحث أخرى.",
+                    title = GlowStrings.get(R.string.no_results),
+                    message = GlowStrings.get(R.string.try_other_search),
                     icon = IconKind.Note,
                     badge = IconKind.Search,
-                    actionLabel = "مسح البحث",
+                    actionLabel = GlowStrings.get(R.string.clear_search),
                     onAction = { query = "" },
                 )
                 tab == LibraryTab.Tracks -> TrackList(sorted, sort, currentId, isPlaying, pad, onPlay) { actionTrack = it }
                 tab == LibraryTab.Favorites -> if (favorites.isEmpty()) {
                     GlowEmptyState(
-                        title = "لا مفضلات بعد",
-                        message = "اضغط مطولاً على أي أغنية لإضافتها إلى المفضلة.",
+                        title = GlowStrings.get(R.string.no_favs_title),
+                        message = GlowStrings.get(R.string.no_favs_msg),
                         icon = IconKind.Heart,
                     )
                 } else {
@@ -274,8 +281,8 @@ fun LibraryScreen(
                 }
                 tab == LibraryTab.Genres -> if (genres.isEmpty()) {
                     GlowEmptyState(
-                        title = "لا أنواع",
-                        message = "لا تتوفر معلومات الأنواع على هذا الجهاز.",
+                        title = GlowStrings.get(R.string.no_genres_title),
+                        message = GlowStrings.get(R.string.no_genres_msg),
                         icon = IconKind.Album,
                     )
                 } else {
@@ -283,7 +290,7 @@ fun LibraryScreen(
                         items(genres, key = { it.title }) { g ->
                             MediaRow(
                                 art = g.cover, title = g.title, subtitle = null,
-                                trailing = "${g.tracks.size} أغنية", highlight = false,
+                                trailing = GlowStrings.songs(g.tracks.size), highlight = false,
                                 onClick = { onOpen(g) },
                             )
                         }
@@ -300,7 +307,7 @@ fun LibraryScreen(
                         CoverCell(
                             art = c.cover,
                             title = c.title,
-                            subtitle = "${c.subtitle} | ${c.tracks.size} أغنية",
+                            subtitle = "${c.subtitle} | ${GlowStrings.songs(c.tracks.size)}",
                             onClick = { onOpen(c) },
                         )
                     }
@@ -316,7 +323,7 @@ fun LibraryScreen(
                         CoverCell(
                             art = c.cover,
                             title = null,
-                            subtitle = "${c.tracks.size} أغنية",
+                            subtitle = GlowStrings.songs(c.tracks.size),
                             overlay = c.title,
                             onClick = { onOpen(c) },
                         )
@@ -328,7 +335,7 @@ fun LibraryScreen(
 
     if (sortOpen) {
         GlowChoiceDialog(
-            title = "ترتيب الأغاني",
+            title = GlowStrings.get(R.string.sort_dialog_title),
             options = LibrarySort.values().map { it to it.label },
             selected = sort,
             onSelect = { sort = it },
@@ -343,8 +350,8 @@ fun LibraryScreen(
                 val wasFav = t.id in store.favorites
                 store.toggleFavorite(t.id)
                 snackbar?.show(
-                    if (wasFav) "أُزيل من المفضلة" else "أُضيف إلى المفضلة",
-                    "تراجع",
+                    if (wasFav) GlowStrings.get(R.string.fav_removed) else GlowStrings.get(R.string.fav_added),
+                    GlowStrings.get(R.string.undo),
                 ) { store.toggleFavorite(t.id) }
                 actionTrack = null
             },
@@ -359,10 +366,10 @@ fun LibraryScreen(
             playlists = store.playlists,
             onPick = { pl ->
                 if (t.id in pl.trackIds) {
-                    snackbar?.show("المقطع موجود بالفعل في «${pl.name}»")
+                    snackbar?.show(GlowStrings.get(R.string.already_in_playlist, pl.name))
                 } else {
                     store.addToPlaylist(pl.id, t.id)
-                    snackbar?.show("أُضيف إلى «${pl.name}»", "تراجع") { store.removeFromPlaylist(pl.id, t.id) }
+                    snackbar?.show(GlowStrings.get(R.string.added_to_playlist, pl.name), GlowStrings.get(R.string.undo)) { store.removeFromPlaylist(pl.id, t.id) }
                 }
                 pickFor = null
             },
@@ -376,7 +383,7 @@ fun LibraryScreen(
                 val before = store.playlists.map { it.id }.toSet()
                 store.createPlaylist(name, np.track?.id)
                 val created = store.playlists.firstOrNull { it.id !in before }
-                snackbar?.show("أُنشئت القائمة «${name.trim()}»", "تراجع") {
+                snackbar?.show(GlowStrings.get(R.string.playlist_created, name.trim()), GlowStrings.get(R.string.undo)) {
                     created?.let { store.deletePlaylist(it.id) }
                 }
                 newPlaylist = null
@@ -449,13 +456,13 @@ private fun PlaylistsTab(
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(14.dp),
             ) {
-                item { SpecialCard("المشغّلة مؤخراً", recent, onOpen) }
-                item { SpecialCard("الأكثر تشغيلاً", most, onOpen) }
+                item { SpecialCard(GlowStrings.get(R.string.recently_played), recent, onOpen) }
+                item { SpecialCard(GlowStrings.get(R.string.most_played), most, onOpen) }
             }
         }
         item {
             Text(
-                "+  قائمة جديدة",
+                GlowStrings.get(R.string.new_playlist_plus),
                 color = skin.accentText,
                 fontSize = 17.sp,
                 modifier = Modifier
@@ -469,7 +476,7 @@ private fun PlaylistsTab(
                 art = list.firstOrNull(),
                 title = p.name,
                 subtitle = null,
-                trailing = "${list.size} أغنية",
+                trailing = GlowStrings.songs(list.size),
                 highlight = false,
                 onClick = { if (list.isNotEmpty()) onOpen(MediaGroup(p.name, "", list[0], list)) },
             )
@@ -493,7 +500,7 @@ private fun SpecialCard(title: String, list: List<Track>, onOpen: (MediaGroup) -
             modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
         )
         Text(
-            "${list.size} أغنية", color = skin.textSecondary, fontSize = 13.sp,
+            GlowStrings.songs(list.size), color = skin.textSecondary, fontSize = 13.sp,
             textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth(),
         )
     }
@@ -517,12 +524,12 @@ private fun ActionsDialog(
     GlowDialog(
         title = track.displayTitle,
         onDismiss = onDismiss,
-        actions = { GlowDialogAction("إغلاق", onDismiss) },
+        actions = { GlowDialogAction(GlowStrings.get(R.string.close), onDismiss) },
     ) {
-        ActionRow(if (isFavorite) "إزالة من المفضلة" else "إضافة إلى المفضلة", onToggleFavorite)
-        ActionRow("تشغيل بعد المقطع الحالي", onPlayNext)
-        ActionRow("إضافة إلى نهاية الطابور", onAddToQueue)
-        ActionRow("إضافة إلى قائمة تشغيل", onAddToPlaylist)
+        ActionRow(if (isFavorite) GlowStrings.get(R.string.remove_from_favs) else GlowStrings.get(R.string.add_to_favs), onToggleFavorite)
+        ActionRow(GlowStrings.get(R.string.play_next), onPlayNext)
+        ActionRow(GlowStrings.get(R.string.add_to_queue_end), onAddToQueue)
+        ActionRow(GlowStrings.get(R.string.add_to_playlist), onAddToPlaylist)
     }
 }
 
@@ -534,11 +541,11 @@ private fun PickPlaylistDialog(
     onDismiss: () -> Unit,
 ) {
     GlowDialog(
-        title = "إضافة إلى قائمة",
+        title = GlowStrings.get(R.string.add_to_playlist_title),
         onDismiss = onDismiss,
-        actions = { GlowDialogAction("إلغاء", onDismiss) },
+        actions = { GlowDialogAction(GlowStrings.get(R.string.cancel), onDismiss) },
     ) {
-        ActionRow("+  قائمة جديدة", onNew)
+        ActionRow(GlowStrings.get(R.string.new_playlist_plus), onNew)
         playlists.forEach { p -> ActionRow(p.name) { onPick(p) } }
     }
 }
@@ -550,11 +557,11 @@ private fun NameDialog(onCreate: (String) -> Unit, onDismiss: () -> Unit) {
     val focus = remember { FocusRequester() }
     LaunchedEffect(Unit) { focus.requestFocus() }
     GlowDialog(
-        title = "قائمة جديدة",
+        title = GlowStrings.get(R.string.new_playlist),
         onDismiss = onDismiss,
         actions = {
-            GlowDialogAction("إلغاء", onDismiss)
-            GlowDialogAction("إنشاء", { onCreate(name) }, enabled = name.isNotBlank(), primary = true)
+            GlowDialogAction(GlowStrings.get(R.string.cancel), onDismiss)
+            GlowDialogAction(GlowStrings.get(R.string.create), { onCreate(name) }, enabled = name.isNotBlank(), primary = true)
         },
     ) {
         Box(
@@ -564,7 +571,7 @@ private fun NameDialog(onCreate: (String) -> Unit, onDismiss: () -> Unit) {
                 .background(skin.chip)
                 .padding(horizontal = 16.dp, vertical = 14.dp),
         ) {
-            if (name.isEmpty()) Text("اسم القائمة", color = skin.textSecondary, fontSize = 15.sp)
+            if (name.isEmpty()) Text(GlowStrings.get(R.string.playlist_name), color = skin.textSecondary, fontSize = 15.sp)
             BasicTextField(
                 value = name,
                 onValueChange = { name = it },
@@ -595,7 +602,7 @@ private fun SearchField(value: String, onChange: (String) -> Unit, onClose: () -
         GlowIcon(IconKind.Search, skin.textSecondary, 20.dp)
         Box(Modifier.weight(1f).padding(horizontal = 12.dp), contentAlignment = Alignment.CenterStart) {
             if (value.isEmpty()) {
-                Text("ابحث في مكتبتك", color = skin.textSecondary, fontSize = 15.sp)
+                Text(GlowStrings.get(R.string.search_library), color = skin.textSecondary, fontSize = 15.sp)
             }
             BasicTextField(
                 value = value,
@@ -606,7 +613,7 @@ private fun SearchField(value: String, onChange: (String) -> Unit, onClose: () -
                 modifier = Modifier.fillMaxWidth().focusRequester(focus),
             )
         }
-        GlowIconTap(if (value.isEmpty()) "إغلاق البحث" else "مسح", {
+        GlowIconTap(if (value.isEmpty()) GlowStrings.get(R.string.close_search) else GlowStrings.get(R.string.clear), {
             if (value.isEmpty()) onClose() else onChange("")
         }, size = 44.dp) {
             Text("✕", color = skin.textSecondary, fontSize = 16.sp, modifier = Modifier.align(Alignment.Center))
@@ -617,10 +624,10 @@ private fun SearchField(value: String, onChange: (String) -> Unit, onClose: () -
 @Composable
 private fun PermissionPrompt(onRequestPermission: () -> Unit) {
     GlowEmptyState(
-        title = "نحتاج إذن الموسيقى",
-        message = "يحتاج Glow إذن قراءة الموسيقى لعرض مكتبتك.",
+        title = GlowStrings.get(R.string.perm_title),
+        message = GlowStrings.get(R.string.perm_msg),
         icon = IconKind.Note,
-        actionLabel = "السماح",
+        actionLabel = GlowStrings.get(R.string.allow),
         onAction = onRequestPermission,
     )
 }

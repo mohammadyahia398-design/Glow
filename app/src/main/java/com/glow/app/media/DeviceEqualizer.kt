@@ -2,6 +2,8 @@ package com.glow.app.media
 
 import android.media.audiofx.AudioEffect
 import android.media.audiofx.Equalizer
+import com.glow.app.GlowStrings
+import com.glow.app.R
 
 /** لقطة قابلة للعرض من حالة المعادل الحالية. */
 data class EqualizerSnapshot(
@@ -54,7 +56,7 @@ class DeviceEqualizer(audioSessionId: Int) {
             val instance = effect ?: return@runCatching emptyList()
             val count = instance.numberOfPresets.toInt()
             buildList {
-                add("مخصص")
+                add(GlowStrings.get(R.string.eq_custom))
                 for (index in 0 until count) {
                     add(instance.getPresetName(index.toShort()).orEmpty())
                 }

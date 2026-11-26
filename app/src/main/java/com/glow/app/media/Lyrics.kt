@@ -15,6 +15,8 @@ import kotlin.math.abs
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
+import com.glow.app.GlowStrings
+import com.glow.app.R
 
 /** سطر كلمات مؤقّت: [timeMs] لحظة ظهوره من بداية الأغنية. */
 data class LyricLine(val timeMs: Long, val text: String)
@@ -34,7 +36,7 @@ sealed interface LyricsResult {
 }
 
 private val LRC_TIME = Regex("""\[(\d{1,3}):(\d{2})(?:[.:](\d{1,3}))?]""")
-private const val UNKNOWN_ARTIST_NAME = "فنان غير معروف"
+private val UNKNOWN_ARTIST_NAME: String get() = GlowStrings.get(R.string.artist_unknown)
 private const val NEGATIVE_CACHE_MS = 7L * 24 * 60 * 60 * 1000
 private const val MAX_IMPORT_BYTES = 1_000_000
 

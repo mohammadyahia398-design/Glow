@@ -44,6 +44,8 @@ import com.glow.app.ui.common.LocalGlowSnackbar
 import com.glow.app.ui.theme.LocalGlowSkin
 import kotlinx.coroutines.launch
 import kotlin.math.abs
+import com.glow.app.GlowStrings
+import com.glow.app.R
 
 /** لوحة الكلمات: تحلّ محل الغلاف في شاشة التشغيل. السطر الحالي واضح والباقي خافت، والضغط على سطر ينتقل إليه. */
 @Composable
@@ -71,7 +73,7 @@ fun LyricsPanel(
                 if (ok) {
                     attempt++
                 } else {
-                    val msg = "تعذّرت قراءة الملف أو لا يحوي كلمات"
+                    val msg = GlowStrings.get(R.string.lyrics_read_fail)
                     if (snackbar != null) snackbar.show(msg) else Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
                 }
             }
@@ -84,15 +86,15 @@ fun LyricsPanel(
             .background(if (skin.isDark) Color.Black.copy(alpha = 0.30f) else Color.White.copy(alpha = 0.45f)),
     ) {
         when (val r = result) {
-            null -> Message("جارٍ البحث عن الكلمات…", contentColor)
-            LyricsResult.None -> Message("لا توجد كلمات لهذه الأغنية\nيمكنك اختيار ملف كلمات بنفسك", contentColor)
+            null -> Message(GlowStrings.get(R.string.lyrics_searching), contentColor)
+            LyricsResult.None -> Message(GlowStrings.get(R.string.lyrics_none), contentColor)
             LyricsResult.Failed -> Column(
                 Modifier.align(Alignment.Center),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Text("تعذّر تحميل الكلمات", color = contentColor.copy(alpha = 0.8f), fontSize = 15.sp)
+                Text(GlowStrings.get(R.string.lyrics_load_fail), color = contentColor.copy(alpha = 0.8f), fontSize = 15.sp)
                 Text(
-                    "إعادة المحاولة",
+                    GlowStrings.get(R.string.retry),
                     color = skin.accentText,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.SemiBold,
@@ -124,9 +126,9 @@ fun LyricsPanel(
             Modifier.align(Alignment.BottomStart).padding(12.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            LyricsPill("اختيار ملف") { picker.launch(arrayOf("*/*")) }
+            LyricsPill(GlowStrings.get(R.string.lyrics_pick)) { picker.launch(arrayOf("*/*")) }
             if (hasManual) {
-                LyricsPill("إزالة ملفي") {
+                LyricsPill(GlowStrings.get(R.string.lyrics_remove)) {
                     LyricsRepository.clearManual(context, track)
                     attempt++
                 }
