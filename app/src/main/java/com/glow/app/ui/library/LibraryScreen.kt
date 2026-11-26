@@ -32,6 +32,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -50,7 +51,10 @@ import com.glow.app.settings.LibraryStore
 import com.glow.app.settings.Playlist
 import com.glow.app.ui.common.AlbumArt
 import com.glow.app.ui.common.CoverCell
+import com.glow.app.ui.common.GlowChoiceDialog
 import com.glow.app.ui.common.GlowDialog
+import com.glow.app.ui.common.GlowLoading
+import com.glow.app.ui.common.GlowTextButton
 import com.glow.app.ui.common.LocalGlowSnackbar
 import com.glow.app.ui.common.GlowDialogAction
 import com.glow.app.ui.common.GlowDialogRow
@@ -97,6 +101,21 @@ private const val UNKNOWN_ARTIST = "فنان غير معروف"
 
 private class NewPlaylist(val track: Track?)
 
+/** ترتيب قائمة الأغاني والمفضلة. */
+private enum class LibrarySort(val label: String) {
+    Title("العنوان"),
+    Artist("الفنان"),
+    Newest("الأحدث"),
+    Duration("المدة"),
+}
+
+private fun List<Track>.sortedFor(sort: LibrarySort): List<Track> = when (sort) {
+    LibrarySort.Title -> sortedBy { it.title.lowercase() }
+    LibrarySort.Artist -> sortedWith(compareBy({ it.artist.lowercase() }, { it.title.lowercase() }))
+    LibrarySort.Newest -> sortedByDescending { it.dateAddedSec }
+    LibrarySort.Duration -> sortedByDescending { it.durationMs }
+}
+
 /** شاشة المكتبة على طراز Samsung Music: ترويسة + تبويبات تُمرَّر أفقياً + لوح قائمة بزوايا مدوّرة. */
 @Composable
 fun LibraryScreen(
@@ -119,6 +138,8 @@ fun LibraryScreen(
     var actionTrack by remember { mutableStateOf<Track?>(null) }
     var pickFor by remember { mutableStateOf<Track?>(null) }
     var newPlaylist by remember { mutableStateOf<NewPlaylist?>(null) }
+    var sort by rememberSaveable { mutableStateOf(LibrarySort.Title) }
+    var sortOpen by remember { mutableStateOf(false) }
     val snackbar = LocalGlowSnackbar.current
 
     val byId = remember(tracks) { tracks.associateBy { it.id } }
@@ -128,6 +149,7 @@ fun LibraryScreen(
                 it.album.contains(query, true)
         }
     }
+    val sorted = remember(shown, sort) { shown.sortedFor(sort) }
     val albums = remember(shown) {
         shown.groupBy { it.albumId }.values
             .map { MediaGroup(it[0].album, it[0].artist, it[0], it) }
@@ -143,7 +165,7 @@ fun LibraryScreen(
             .map { (name, list) -> MediaGroup(name, "", list[0], list) }
             .sortedBy { it.title.lowercase() }
     }
-    val favorites = remember(shown, store.favorites) { shown.filter { it.id in store.favorites } }
+    val favorites = remember(sorted, store.favorites) { sorted.filter { it.id in store.favorites } }
     val recent = remember(byId, store.recents) { store.recents.mapNotNull { byId[it] } }
     val most = remember(tracks, store.playCounts) {
         tracks.filter { (store.playCounts[it.id] ?: 0) > 0 }
@@ -168,6 +190,16 @@ fun LibraryScreen(
             },
         )
         if (searching) SearchField(query, { query = it }) { searching = false; query = "" }
+        if (loaded && hasAudioAccess && tracks.isNotEmpty() &&
+            (tab == LibraryTab.Tracks || tab == LibraryTab.Favorites)
+        ) {
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
+                horizontalArrangement = Arrangement.Start,
+            ) {
+                GlowTextButton(onClick = { sortOpen = true }) { Text("الترتيب: " + sort.label) }
+            }
+        }
 
 
         Box(
@@ -181,6 +213,10 @@ fun LibraryScreen(
             val gridPad = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = LibraryBottomInset)
             when {
                 !hasAudioAccess -> PermissionPrompt(onRequestPermission)
+                !loaded && tab != LibraryTab.Spotify -> GlowLoading(
+                    Modifier.align(Alignment.Center),
+                    label = "جارٍ فحص المكتبة…",
+                )
                 loaded && tracks.isEmpty() -> GlowEmptyState(
                     title = "لا توجد موسيقى",
                     message = "لم نجد أي ملف صوتي على هذا الجهاز. أضف أغاني ثم أعد فتح Glow.",
@@ -205,7 +241,7 @@ fun LibraryScreen(
                     actionLabel = "مسح البحث",
                     onAction = { query = "" },
                 )
-                tab == LibraryTab.Tracks -> TrackList(shown, currentId, pad, onPlay) { actionTrack = it }
+                tab == LibraryTab.Tracks -> TrackList(sorted, currentId, pad, onPlay) { actionTrack = it }
                 tab == LibraryTab.Favorites -> if (favorites.isEmpty()) {
                     GlowEmptyState(
                         title = "لا مفضلات بعد",
@@ -269,6 +305,15 @@ fun LibraryScreen(
         }
     }
 
+    if (sortOpen) {
+        GlowChoiceDialog(
+            title = "ترتيب الأغاني",
+            options = LibrarySort.values().map { it to it.label },
+            selected = sort,
+            onSelect = { sort = it },
+            onDismiss = { sortOpen = false },
+        )
+    }
     actionTrack?.let { t ->
         ActionsDialog(
             track = t,
