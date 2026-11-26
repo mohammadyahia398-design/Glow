@@ -6,7 +6,15 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -74,6 +82,32 @@ fun QueueSheet(
     val dragTarget =
         if (dragFrom >= 0) (dragFrom + (dragOffset / stepPx).roundToInt()).coerceIn(0, local.lastIndex) else -1
 
+    fun startDrag(id: Long) {
+        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+        dragId = id
+        dragOffset = 0f
+    }
+
+    fun endDrag() {
+        val from = local.indexOfFirst { it.id == dragId }
+        if (from >= 0) {
+            val to = (from + (dragOffset / stepPx).roundToInt()).coerceIn(0, local.lastIndex)
+            if (to != from) {
+                val moved = local.toMutableList()
+                moved.add(to, moved.removeAt(from))
+                local = moved
+                onMove(from, to)
+            }
+        }
+        dragId = null
+        dragOffset = 0f
+    }
+
+    fun cancelDrag() {
+        dragId = null
+        dragOffset = 0f
+    }
+
     GlowBottomSheet(onDismiss = onDismiss) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 18.dp).padding(bottom = 24.dp)) {
             Row(
@@ -88,7 +122,7 @@ fun QueueSheet(
                         fontSize = 13.sp,
                     )
                     Text(
-                        "اضغط مطولاً على مقطع ثم اسحبه لتغيير ترتيبه",
+                        "اسحب المقبض (أو اضغط مطولاً على المقطع) لتغيير ترتيبه",
                         color = skin.textSecondary.copy(alpha = 0.8f),
                         fontSize = 11.5.sp,
                     )
@@ -125,6 +159,19 @@ fun QueueSheet(
                             current = track.id == currentId,
                             onPlay = { onPlayAt(index); onDismiss() },
                             onRemove = { onRemove(index) },
+                            handleModifier = Modifier
+                                .pointerInput(Unit) { detectTapGestures { } }
+                                .pointerInput(track.id) {
+                                    detectDragGestures(
+                                        onDragStart = { startDrag(track.id) },
+                                        onDrag = { change, amount ->
+                                            change.consume()
+                                            dragOffset += amount.y
+                                        },
+                                        onDragEnd = { endDrag() },
+                                        onDragCancel = { cancelDrag() },
+                                    )
+                                },
                             modifier = Modifier
                                 .zIndex(if (dragging) 1f else 0f)
                                 .graphicsLayer {
@@ -136,38 +183,41 @@ fun QueueSheet(
                                 }
                                 .pointerInput(track.id) {
                                     detectDragGesturesAfterLongPress(
-                                        onDragStart = {
-                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                            dragId = track.id
-                                            dragOffset = 0f
-                                        },
+                                        onDragStart = { startDrag(track.id) },
                                         onDrag = { change, amount ->
                                             change.consume()
                                             dragOffset += amount.y
                                         },
-                                        onDragEnd = {
-                                            val from = local.indexOfFirst { it.id == dragId }
-                                            if (from >= 0) {
-                                                val to = (from + (dragOffset / stepPx).roundToInt())
-                                                    .coerceIn(0, local.lastIndex)
-                                                if (to != from) {
-                                                    val moved = local.toMutableList()
-                                                    moved.add(to, moved.removeAt(from))
-                                                    local = moved
-                                                    onMove(from, to)
-                                                }
-                                            }
-                                            dragId = null
-                                            dragOffset = 0f
-                                        },
-                                        onDragCancel = {
-                                            dragId = null
-                                            dragOffset = 0f
-                                        },
+                                        onDragEnd = { endDrag() },
+                                        onDragCancel = { cancelDrag() },
                                     )
                                 },
                         )
                     }
+                }
+            }
+        }
+    }
+}
+
+/** مقبض سحب مرئي (ست نقاط): السحب منه يبدأ فوراً بلا ضغط مطوّل. */
+@Composable
+private fun DragHandle(color: androidx.compose.ui.graphics.Color, modifier: Modifier) {
+    Box(
+        modifier
+            .size(width = 30.dp, height = QueueRowHeight)
+            .semantics { contentDescription = "اسحب لتغيير الترتيب" },
+        contentAlignment = Alignment.Center,
+    ) {
+        Canvas(Modifier.size(width = 12.dp, height = 18.dp)) {
+            val r = 1.6.dp.toPx()
+            for (col in 0..1) {
+                for (row in 0..2) {
+                    drawCircle(
+                        color = color.copy(alpha = 0.75f),
+                        radius = r,
+                        center = Offset(size.width * (0.25f + 0.5f * col), size.height * (0.1667f + 0.3333f * row)),
+                    )
                 }
             }
         }
@@ -180,6 +230,7 @@ private fun QueueTrackRow(
     current: Boolean,
     onPlay: () -> Unit,
     onRemove: () -> Unit,
+    handleModifier: Modifier,
     modifier: Modifier = Modifier,
 ) {
     val skin = LocalGlowSkin.current
@@ -189,7 +240,7 @@ private fun QueueTrackRow(
             .height(QueueRowHeight)
             .clip(RoundedCornerShape(18.dp))
             .background(if (current) skin.accent.copy(alpha = 0.14f) else androidx.compose.ui.graphics.Color.Transparent)
-            .clickable(onClick = onPlay)
+            .clickable(role = Role.Button, onClick = onPlay)
             .padding(start = 10.dp, end = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -214,6 +265,7 @@ private fun QueueTrackRow(
                 overflow = TextOverflow.Ellipsis,
             )
         }
+        DragHandle(skin.textSecondary, handleModifier)
         GlowRoundButton(
             CoreGlyphs.Close, "إزالة من القائمة", onRemove,
             size = 34.dp, tint = skin.textSecondary,

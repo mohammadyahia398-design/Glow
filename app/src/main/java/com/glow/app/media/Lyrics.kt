@@ -74,6 +74,8 @@ object LyricsRepository {
     suspend fun load(context: Context, track: Track): LyricsResult = withContext(Dispatchers.IO) {
         // كلمات اختارها المستخدم بنفسه لها الأولوية على الجلب من الإنترنت.
         readCache(manualFile(context, track))?.let { return@withContext it }
+        // كلمات مدمجة داخل ملف MP3 نفسه (وسم ID3، إطار USLT).
+        readEmbedded(context, track)?.let { return@withContext it }
         val title = track.displayTitle
         if (title.startsWith("رسالة واتساب") || title.isBlank()) return@withContext LyricsResult.None
         val artist = track.artist.trim().takeIf { it.isNotEmpty() && it != UNKNOWN_ARTIST_NAME }
@@ -89,6 +91,107 @@ object LyricsRepository {
         }
         runCatching { writeCache(file, result) }
         result
+    }
+
+    /** يقرأ كلمات مدمجة في وسم ID3v2.3/2.4 (إطار USLT) لأغنية MP3 محلية؛ null إن لم توجد أو لم يكن الملف MP3. */
+    private fun readEmbedded(context: Context, track: Track): LyricsResult? {
+        if (track.albumId == -1L || track.uri.scheme != "content") return null
+        return try {
+            context.contentResolver.openInputStream(track.uri)?.use { raw ->
+                val input = java.io.DataInputStream(raw.buffered())
+                val head = ByteArray(10)
+                input.readFully(head)
+                if (head[0] != 'I'.code.toByte() || head[1] != 'D'.code.toByte() || head[2] != '3'.code.toByte()) {
+                    return null
+                }
+                val major = head[3].toInt()
+                if (major != 3 && major != 4) return null
+                var remaining = syncsafe(head, 6)
+                if ((head[5].toInt() and 0x40) != 0) {
+                    val sz = ByteArray(4)
+                    input.readFully(sz)
+                    val extSize = if (major == 4) syncsafe(sz, 0) - 4 else beInt(sz, 0)
+                    if (extSize < 0) return null
+                    skipFully(input, extSize.toLong())
+                    remaining -= 4 + extSize
+                }
+                val fh = ByteArray(10)
+                while (remaining >= 10) {
+                    input.readFully(fh)
+                    remaining -= 10
+                    if (fh[0].toInt() == 0) break
+                    val id = String(fh, 0, 4, Charsets.ISO_8859_1)
+                    val size = if (major == 4) syncsafe(fh, 4) else beInt(fh, 4)
+                    if (size < 0 || size > remaining) break
+                    if (id == "USLT" && size in 1..MAX_IMPORT_BYTES) {
+                        val body = ByteArray(size)
+                        input.readFully(body)
+                        return parseUslt(body)
+                    }
+                    skipFully(input, size.toLong())
+                    remaining -= size
+                }
+                null
+            }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun parseUslt(body: ByteArray): LyricsResult? {
+        if (body.size < 5) return null
+        val enc = body[0].toInt()
+        val wide = enc == 1 || enc == 2
+        var i = 4
+        while (i < body.size) {
+            if (wide) {
+                if (i + 1 < body.size && body[i].toInt() == 0 && body[i + 1].toInt() == 0) {
+                    i += 2
+                    break
+                }
+                i += 2
+            } else {
+                if (body[i].toInt() == 0) {
+                    i += 1
+                    break
+                }
+                i += 1
+            }
+        }
+        val bytes = body.copyOfRange(minOf(i, body.size), body.size)
+        val text = when (enc) {
+            1 -> String(bytes, Charsets.UTF_16)
+            2 -> String(bytes, Charsets.UTF_16BE)
+            3 -> String(bytes, Charsets.UTF_8)
+            else -> decode(bytes)
+        }.removePrefix("\uFEFF").replace("\u0000", "")
+        val synced = parseLrc(text)
+        return when {
+            synced.isNotEmpty() -> LyricsResult.Synced(synced)
+            text.isNotBlank() -> LyricsResult.Plain(text.lines().map { it.trimEnd() })
+            else -> null
+        }
+    }
+
+    private fun syncsafe(b: ByteArray, o: Int): Int =
+        ((b[o].toInt() and 0x7F) shl 21) or ((b[o + 1].toInt() and 0x7F) shl 14) or
+            ((b[o + 2].toInt() and 0x7F) shl 7) or (b[o + 3].toInt() and 0x7F)
+
+    private fun beInt(b: ByteArray, o: Int): Int =
+        ((b[o].toInt() and 0xFF) shl 24) or ((b[o + 1].toInt() and 0xFF) shl 16) or
+            ((b[o + 2].toInt() and 0xFF) shl 8) or (b[o + 3].toInt() and 0xFF)
+
+    private fun skipFully(input: java.io.InputStream, n: Long) {
+        var left = n
+        while (left > 0) {
+            val s = input.skip(left)
+            if (s <= 0) {
+                if (input.read() < 0) throw java.io.EOFException()
+                left--
+            } else {
+                left -= s
+            }
+        }
     }
 
     private fun manualFile(context: Context, track: Track): File {

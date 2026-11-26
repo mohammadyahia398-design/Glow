@@ -110,7 +110,7 @@ fun NowPlayingScreen(
                         .padding(12.dp)
                         .clip(RoundedCornerShape(50))
                         .background(Color.Black.copy(alpha = 0.42f))
-                        .clickable { showLyrics = !showLyrics }
+                        .clickable(role = androidx.compose.ui.semantics.Role.Button) { showLyrics = !showLyrics }
                         .padding(horizontal = 14.dp, vertical = 8.dp),
                 ) {
                     Text(

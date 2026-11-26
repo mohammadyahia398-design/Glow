@@ -32,6 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -140,7 +141,7 @@ private fun LyricsPill(text: String, onClick: () -> Unit) {
         Modifier
             .clip(RoundedCornerShape(50))
             .background(Color.Black.copy(alpha = 0.42f))
-            .clickable(onClick = onClick)
+            .clickable(role = Role.Button, onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 8.dp),
     ) {
         Text(text, color = Color.White, fontSize = 12.5.sp, fontWeight = FontWeight.SemiBold)
@@ -197,6 +198,7 @@ private fun SyncedLines(
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
+                        role = Role.Button,
                     ) { onSeek(line.timeMs) }
                     .padding(vertical = 8.dp),
             )
